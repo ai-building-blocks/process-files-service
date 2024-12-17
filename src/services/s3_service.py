@@ -52,20 +52,40 @@ class S3Service:
         
         # Validate bucket access and create if needed
         try:
-            self.s3_client.head_bucket(Bucket=self.source_bucket)
-            self.logger.info(f"Successfully connected to bucket '{self.source_bucket}'")
+            # First try to list bucket contents to verify full access
+            self.s3_client.list_objects_v2(
+                Bucket=self.source_bucket,
+                MaxKeys=1
+            )
+            self.logger.info(f"Successfully connected to bucket '{self.source_bucket}' with full access")
         except ClientError as e:
             error_code = e.response['Error']['Code']
             error_msg = e.response['Error'].get('Message', '')
             if error_code == '403':
                 self.logger.error(f"Access denied to bucket '{self.source_bucket}'. Error: {error_msg}")
-                self.logger.error("Current credentials:")
+                self.logger.error("Current credentials and configuration:")
                 self.logger.error(f"Access Key: {self.access_key[:4]}...{self.access_key[-4:]}")
                 self.logger.error(f"Endpoint: {self.endpoint_url}")
+                self.logger.error(f"Bucket: {self.source_bucket}")
+                self.logger.error(f"Source Prefix: {self.source_prefix}")
+                self.logger.error(f"Path Style: {os.getenv('S3_USE_PATH_STYLE', 'true')}")
+                self.logger.error(f"Verify SSL: {os.getenv('S3_VERIFY_SSL', 'true')}")
+                
+                # Try to get bucket policy to check permissions
+                try:
+                    policy = self.s3_client.get_bucket_policy(Bucket=self.source_bucket)
+                    self.logger.error(f"Current bucket policy: {policy}")
+                except:
+                    self.logger.error("Unable to retrieve bucket policy")
+                
                 raise PermissionError(
                     f"Access denied to bucket '{self.source_bucket}'. "
                     f"Error: {error_msg}. "
-                    "Please verify S3 credentials and bucket permissions."
+                    "Please verify:\n"
+                    "1. S3 credentials are correct\n"
+                    "2. Bucket exists and is accessible\n"
+                    "3. IAM/bucket policy allows s3:ListBucket and s3:GetObject\n"
+                    "4. Endpoint URL and SSL settings are correct"
                 )
             elif error_code == '404':
                 self.logger.warning(f"Bucket '{self.source_bucket}' does not exist, attempting to create...")
@@ -210,20 +230,31 @@ class S3Service:
     async def process_single_file(self, file_id: str, session: Session):
         """Process a specific file by its ID"""
         try:
-            log_s3_operation(self.logger, "head_object", {"file_id": file_id})
+            log_s3_operation(self.logger, "get_object", {"file_id": file_id})
             
             try:
-                obj = self.s3_client.head_object(
+                # Try to get the object directly instead of head_object
+                response = self.s3_client.get_object(
                     Bucket=self.source_bucket,
                     Key=file_id
                 )
+                
+                # Read the content
+                content = response['Body'].read()
+                self.logger.info(f"Successfully downloaded file {file_id}, size: {len(content)} bytes")
+                
+                # Prepare file for processing
+                files = {
+                    'file': (file_id, io.BytesIO(content), 'application/pdf')
+                }
+                
             except ClientError as e:
                 error_code = e.response['Error']['Code']
                 error_msg = e.response['Error']['Message']
                 context = {
                     "file_id": file_id,
                     "bucket": self.source_bucket,
-                    "operation": "head_object",
+                    "operation": "get_object",
                     "error_code": error_code,
                     "error_message": error_msg
                 }
@@ -233,9 +264,17 @@ class S3Service:
                     raise FileNotFoundError(f"File '{file_id}' not found in bucket '{self.source_bucket}'")
                 elif error_code == '403':
                     log_api_error(self.logger, e, context)
+                    self.logger.error("Access denied. Current configuration:")
+                    self.logger.error(f"Bucket: {self.source_bucket}")
+                    self.logger.error(f"Key: {file_id}")
+                    self.logger.error(f"Endpoint: {self.endpoint_url}")
                     raise PermissionError(
                         f"Access denied to file '{file_id}' in bucket '{self.source_bucket}'. "
-                        "Please verify S3 credentials and bucket permissions."
+                        "Please verify:\n"
+                        "1. S3 credentials are correct\n"
+                        "2. IAM/bucket policy allows s3:GetObject\n"
+                        "3. File exists and is accessible\n"
+                        "4. Bucket and path configuration is correct"
                     )
                 else:
                     log_api_error(self.logger, e, context)
