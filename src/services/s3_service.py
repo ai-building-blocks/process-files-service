@@ -157,10 +157,16 @@ class S3Service:
                 original_filename=obj['Key']
             ).first()
             
+        status = "unprocessed"
+        if doc:
+            status = doc.status
+        elif os.path.exists(os.path.join(self.temp_dir, filename)):
+            status = "downloaded"
+            
         return {
             "id": doc.id if doc else str(ulid.new()),
             "filename": filename,
-            "status": "processed" if doc else "unprocessed",
+            "status": status,
             "last_modified": obj['LastModified'].isoformat()
         }
 
@@ -291,46 +297,78 @@ class S3Service:
             self.logger.error(f"No content provided for file {obj['Key']}")
             raise ValueError("File content not provided")
             
-        with tempfile.NamedTemporaryFile(dir=self.temp_dir) as tmp:
-            tmp.write(content)
-            tmp.flush()
+        # Create a unique filename for the temporary file
+        temp_filename = os.path.basename(obj['Key'])
+        temp_filepath = os.path.join(self.temp_dir, temp_filename)
+        
+        try:
+            # Save the downloaded file
+            with open(temp_filepath, 'wb') as f:
+                f.write(content)
+            
+            # Update document status to downloaded
+            doc = Document(
+                id=str(ulid.new()),
+                original_filename=obj['Key'],
+                processed_filename='',  # Will be set after processing
+                version='1.0',
+                status='downloaded',
+                downloaded_at=datetime.utcnow(),
+                s3_last_modified=obj['LastModified']
+            )
+            session.add(doc)
+            session.commit()
+            
+            # Update status to processing
+            doc.status = 'processing'
+            doc.processing_started_at = datetime.utcnow()
+            session.commit()
             
             converter_url = os.getenv('CONVERTER_SERVICE_URL')
             if not converter_url:
                 raise ValueError("CONVERTER_SERVICE_URL environment variable is required")
                 
-            with open(tmp.name, 'rb') as f:
+            with open(temp_filepath, 'rb') as f:
                 response = requests.post(
                     converter_url,
                     files={'file': f}
                 )
             
             if response.status_code != 200:
-                raise ValueError(f"Conversion service returned status {response.status_code}")
+                doc.status = 'failed'
+                doc.error_message = f"Conversion service returned status {response.status_code}"
+                session.commit()
+                raise ValueError(doc.error_message)
                 
             content = response.json()['markdown_content']
-            file_id = str(ulid.new())
             
             # Save locally
             os.makedirs('data/processed', exist_ok=True)
-            with open(f'data/processed/{file_id}.md', 'w') as f:
+            processed_filename = f'{doc.id}.md'
+            with open(f'data/processed/{processed_filename}', 'w') as f:
                 f.write(content)
             
             # Save to destination folder
-            destination_key = f"{self.destination_prefix}{file_id}.md"
+            destination_key = f"{self.destination_prefix}{processed_filename}"
             self.s3_client.put_object(
                 Bucket=self.source_bucket,
                 Key=destination_key,
                 Body=content
             )
             
-            # Update database
-            doc = Document(
-                id=file_id,
-                original_filename=obj['Key'],
-                processed_filename=f'{file_id}.md',
-                version='1.0',
-                s3_last_modified=obj['LastModified']
-            )
-            session.add(doc)
+            # Update document status
+            doc.processed_filename = processed_filename
+            doc.status = 'completed'
+            doc.processing_completed_at = datetime.utcnow()
             session.commit()
+            
+        except Exception as e:
+            if doc:
+                doc.status = 'failed'
+                doc.error_message = str(e)
+                session.commit()
+            raise
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_filepath):
+                os.remove(temp_filepath)
