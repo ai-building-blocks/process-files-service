@@ -1,144 +1,54 @@
-# S3 Document Pre-processor for RAG
+# S3 Document Processor
 
-A robust service for pre-processing documents stored in S3/MinIO buckets, specifically designed as a preparation step for Retrieval-Augmented Generation (RAG) systems. The service automatically converts various document formats to normalized markdown, tracks document versions, and maintains a clean mapping between original and processed files.
+Automatically processes documents from S3/MinIO buckets and converts them to markdown format.
 
-## Key Features
+## Setup
 
-- **Automated Document Processing**: Monitors S3/MinIO buckets for new or modified files
-- **Format Conversion**: Converts documents to markdown format for RAG compatibility
-- **Version Control**: Tracks document versions and maintains history
-- **File Normalization**: Standardizes filenames using ULIDs while preserving original names
-- **RESTful API**: Easy integration with other services
-- **Change Detection**: Efficiently processes only modified or new files
-- **Incremental Updates**: Supports retrieving only recent changes based on timestamps/ULIDs
+```bash
+# Install dependencies
+pip install .
 
-## Quick Start
+# Copy and edit environment variables
+cp .env.template .env
 
-1. Clone the repository
+# Start the API server
+python -m uvicorn src.main:app --reload
 
-2. Install uv (if not already installed):
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
+# In another terminal, start the worker
+python src/worker.py
+```
 
-3. Create and activate virtual environment:
-   ```bash
-   uv venv
-   source .venv/bin/activate  # On Unix/MacOS
-   # or
-   .venv\Scripts\activate  # On Windows
-   ```
+## Environment Variables
 
-4. Install dependencies:
-   ```bash
-   uv pip install .
-   ```
-
-5. Copy `.env.template` to `.env` and configure:
-   ```env
-   S3_ENDPOINT=your-s3-endpoint
-   S3_ACCESS_KEY=your-access-key
-   S3_SECRET_KEY=your-secret-key
-   SOURCE_BUCKET=your-source-bucket
-   DESTINATION_BUCKET=your-destination-bucket
-   CONVERTER_SERVICE_URL=http://localhost:8000/convert
-   ```
-
-6. Start the service:
-   ```bash
-   .venv/bin/python -m uvicorn src.main:app --reload
-   ```
-
-7. Start the worker (in a separate terminal):
-   ```bash
-   .venv/bin/python src/worker.py
-   ```
-
-Note: Always ensure you're in the virtual environment (step 3) before running any commands. You'll know you're in the virtual environment when you see (.venv) at the start of your terminal prompt.
+Required in `.env`:
+- `S3_ENDPOINT` - S3 or MinIO endpoint URL
+- `S3_ACCESS_KEY` - Access key
+- `S3_SECRET_KEY` - Secret key
+- `SOURCE_BUCKET` - Source bucket name
+- `DESTINATION_BUCKET` - Destination bucket name
+- `CONVERTER_SERVICE_URL` - Document converter service URL
 
 ## API Endpoints
 
-### List Files
+- `GET /files` - List files (source=bucket|parsed)
+- `GET /files/{id}` - Get specific file
+- `GET /files/status` - Check processing status
+
+Full API docs available at `/docs` when running.
+
+## Development
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run linter
+ruff check .
 ```
-GET /files?source=[bucket|parsed]
-```
-Lists files either from the source bucket or processed markdown files.
-
-### Get File
-```
-GET /files/{file_id}?source=[bucket|parsed]
-```
-Retrieves a specific file from either source or processed storage.
-
-### Get File Status
-```
-GET /files/status
-```
-Returns processing status and version information for all files.
-
-### Get Updates
-```
-GET /files/updates?since={timestamp/ulid}
-```
-Returns list of files updated since the specified timestamp/ULID.
-
-## Integration with RAG Systems
-
-This service is designed to be used as a pre-processing step in RAG pipelines:
-
-1. Documents are stored in a source S3 bucket
-2. Service automatically processes new/modified documents
-3. Processed markdown files are stored with normalized names
-4. RAG system can efficiently fetch only recent updates
-5. Original filenames and metadata are preserved for reference
-
-Example workflow:
-```python
-# Fetch recent updates
-updates = requests.get(
-    "http://localhost:8080/files/updates",
-    params={"since": "last_processed_ulid"}
-)
-
-# Process updated files
-for file in updates.json():
-    # Fetch processed markdown
-    content = requests.get(
-        f"http://localhost:8080/files/{file['id']}",
-        params={"source": "parsed"}
-    )
-    # Update RAG system with new content
-    rag_system.update(content.text)
-```
-
-## File Tracking
-
-The service maintains a SQLite database (configurable) to track:
-- Original filenames
-- Processed ULIDs
-- File versions
-- Processing timestamps
-- Processing status
-
-## Configuration
-
-- **S3/MinIO**: Configure endpoint and credentials in `.env`
-- **Conversion Service**: Set external conversion service URL
-- **Storage**: Configure source and destination buckets
-- **Processing**: Adjust worker intervals and batch sizes
-- **Database**: SQLite by default, expandable to other databases
-
-## Monitoring
-
-Access API documentation and monitoring at:
-- Swagger UI: `http://localhost:8080/docs`
-- ReDoc: `http://localhost:8080/redoc`
-- Health check: `http://localhost:8080/health`
-
-## Contributing
-
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details
+MIT
