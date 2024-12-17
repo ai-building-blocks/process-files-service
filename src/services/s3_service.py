@@ -19,9 +19,11 @@ class S3Service:
         # Disable SSL warnings for local development
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         
-        # Set up temporary directory
+        # Set up data directories
         self.temp_dir = os.getenv('TEMP_DIR', './data/temp')
+        self.processed_dir = os.getenv('PROCESSED_DIR', './data/processed')
         os.makedirs(self.temp_dir, exist_ok=True)
+        os.makedirs(self.processed_dir, exist_ok=True)
         
         # Validate required environment variables
         self.endpoint_url = os.getenv('S3_ENDPOINT')
@@ -342,10 +344,10 @@ class S3Service:
                 
             content = response.json()['markdown_content']
             
-            # Save locally
-            os.makedirs('data/processed', exist_ok=True)
+            # Save locally in processed directory
             processed_filename = f'{doc.id}.md'
-            with open(f'data/processed/{processed_filename}', 'w') as f:
+            processed_filepath = os.path.join(self.processed_dir, processed_filename)
+            with open(processed_filepath, 'w') as f:
                 f.write(content)
             
             # Save to destination folder
