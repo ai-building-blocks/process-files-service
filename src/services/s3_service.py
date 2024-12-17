@@ -19,6 +19,10 @@ class S3Service:
         # Disable SSL warnings for local development
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         
+        # Set up temporary directory
+        self.temp_dir = os.getenv('TEMP_DIR', './data/temp')
+        os.makedirs(self.temp_dir, exist_ok=True)
+        
         # Validate required environment variables
         self.endpoint_url = os.getenv('S3_ENDPOINT')
         self.source_bucket = os.getenv('SOURCE_BUCKET')
@@ -287,7 +291,7 @@ class S3Service:
             self.logger.error(f"No content provided for file {obj['Key']}")
             raise ValueError("File content not provided")
             
-        with tempfile.NamedTemporaryFile() as tmp:
+        with tempfile.NamedTemporaryFile(dir=self.temp_dir) as tmp:
             tmp.write(content)
             tmp.flush()
             
