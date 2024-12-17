@@ -44,12 +44,17 @@ A robust service for pre-processing documents stored in S3/MinIO buckets, specif
    CONVERTER_SERVICE_URL=http://localhost:8000/convert
    ```
 
-6. Start the service:
+6. Install uvicorn in the virtual environment:
    ```bash
-   uvicorn src.main:app --reload
+   uv pip install uvicorn
    ```
 
-7. Start the worker (in a separate terminal):
+7. Start the service:
+   ```bash
+   python -m uvicorn src.main:app --reload
+   ```
+
+8. Start the worker (in a separate terminal):
    ```bash
    python src/worker.py
    ```
