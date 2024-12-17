@@ -9,11 +9,9 @@ from src.models.documents import Document
 
 class S3Service:
     def __init__(self):
-        config = boto3.client('s3').meta.config.copy()
-        if os.getenv('S3_USE_PATH_STYLE', 'true').lower() == 'true':
-            config.s3['addressing_style'] = 'path'
-        else:
-            config.s3['addressing_style'] = 'auto'
+        config = boto3.Config(
+            s3={'addressing_style': 'path' if os.getenv('S3_USE_PATH_STYLE', 'true').lower() == 'true' else 'auto'}
+        )
             
         self.s3_client = boto3.client(
             's3',
