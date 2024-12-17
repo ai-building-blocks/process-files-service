@@ -54,14 +54,19 @@ class S3Service:
             self.s3_client.head_bucket(Bucket=self.source_bucket)
         except ClientError as e:
             error_code = e.response['Error']['Code']
+            error_msg = e.response['Error'].get('Message', '')
             if error_code == '403':
+                self.logger.error(f"Access denied to bucket '{self.source_bucket}'. Error: {error_msg}")
                 raise PermissionError(
                     f"Access denied to bucket '{self.source_bucket}'. "
+                    f"Error: {error_msg}. "
                     "Please verify S3 credentials and bucket permissions."
                 )
             elif error_code == '404':
-                raise ValueError(f"Bucket '{self.source_bucket}' does not exist")
+                self.logger.error(f"Bucket '{self.source_bucket}' does not exist. Error: {error_msg}")
+                raise ValueError(f"Bucket '{self.source_bucket}' does not exist. Error: {error_msg}")
             else:
+                self.logger.error(f"S3 error: {error_code} - {error_msg}")
                 raise
                 
         # Get prefixes from environment with validation
