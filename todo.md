@@ -11,13 +11,13 @@
 - [ ] Add pre-commit hooks for code formatting
 
 ## CI/CD
+- [x] Create development and production Docker Compose files
 - [ ] Create GitHub Actions workflow for:
   - [ ] Lint and test Python code
   - [ ] Build Docker image
   - [ ] Push to GitHub Container Registry
   - [ ] Tag releases
 - [ ] Add build status badge to README
-- [ ] Create development and production Docker Compose files
 
 ## S3/MinIO Integration
 - [x] Add boto3 dependency
