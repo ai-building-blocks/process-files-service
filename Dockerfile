@@ -22,10 +22,7 @@ COPY pyproject.toml .
 ENV PATH="/root/.local/bin:$PATH"
 RUN uv venv && \
     . .venv/bin/activate && \
-    uv pip install .
-
-# Copy source code after installing dependencies
-COPY src/ src/
+    uv pip install -e .
 
 # Runtime stage
 FROM python:3.11-slim
@@ -35,10 +32,12 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Copy virtual environment from builder
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/src /app/src
 
 # Set working directory
 WORKDIR /app
+
+# Copy source code after dependencies
+COPY src/ src/
 
 # Set environment variables
 ENV PATH="/app/.venv/bin:$PATH"
