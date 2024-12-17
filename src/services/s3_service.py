@@ -309,9 +309,14 @@ class S3Service:
         temp_filepath = os.path.join(self.temp_dir, temp_filename)
         
         try:
-            # Save the downloaded file
+            # Save the downloaded file and verify
             with open(temp_filepath, 'wb') as f:
                 f.write(content)
+                
+            if not os.path.exists(temp_filepath):
+                raise IOError(f"Failed to save file to {temp_filepath}")
+                
+            self.logger.info(f"Successfully saved file to {temp_filepath}")
             
             # Create or update document status
             doc = Document(
