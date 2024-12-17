@@ -9,7 +9,7 @@ Automatically processes documents from S3/MinIO buckets and converts them to mar
 cp .env.template .env
 
 # Build and start services
-docker compose up -d
+docker compose up --build -d
 
 # View logs
 docker compose logs -f
