@@ -1,4 +1,5 @@
 import boto3
+import urllib3
 from botocore.config import Config
 import os
 import tempfile
@@ -10,6 +11,9 @@ from src.models.documents import Document
 
 class S3Service:
     def __init__(self):
+        # Disable SSL warnings for local development
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
         endpoint_url = os.getenv('S3_ENDPOINT')
         if not endpoint_url:
             raise ValueError("S3_ENDPOINT environment variable is required")
