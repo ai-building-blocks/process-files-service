@@ -2,7 +2,7 @@
 set -e
 
 if [ "$1" = "api" ]; then
-    exec uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload
+    exec uvicorn src.main:app --host "${API_HOST}" --port "${API_PORT}" --reload
 elif [ "$1" = "worker" ]; then
     exec python -m src.worker
 else

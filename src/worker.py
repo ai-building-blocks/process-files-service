@@ -35,4 +35,9 @@ if __name__ == "__main__":
         """Health check endpoint"""
         return {"status": "healthy"}
     
-    uvicorn.run(app, host="0.0.0.0", port=8081, log_level="info")
+    uvicorn.run(
+        app, 
+        host=os.getenv("API_HOST", "0.0.0.0"),
+        port=int(os.getenv("WORKER_PORT", 8081)),
+        log_level="info"
+    )

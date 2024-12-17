@@ -45,7 +45,8 @@ async def trigger_processing():
     """Trigger the worker to process new files"""
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post("http://worker:8081/process")
+            worker_url = os.getenv("WORKER_URL", "http://worker:8081")
+            response = await client.post(f"{worker_url}/process")
             if response.status_code == 200:
                 return response.json()
             else:
