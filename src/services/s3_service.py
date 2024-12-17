@@ -55,7 +55,7 @@ class S3Service:
             
         return prefix
         
-    async def list_files(self, session: Session = None):
+    async def list_files(self, session: Session = None, since: str = None):
         """List files from source bucket with accurate processing status"""
         try:
             response = self.s3_client.list_objects_v2(
@@ -64,7 +64,20 @@ class S3Service:
             )
             
             files = []
-            for obj in response.get('Contents', []):
+            contents = response.get('Contents', [])
+            
+            # Filter by timestamp/ULID if provided
+            if since:
+                try:
+                    # Try parsing as ULID first
+                    since_ts = ulid.parse(since).timestamp()
+                except ValueError:
+                    # Parse as ISO timestamp
+                    since_ts = datetime.fromisoformat(since.replace('Z', '+00:00')).timestamp()
+                
+                contents = [obj for obj in contents if obj['LastModified'].timestamp() >= since_ts]
+                
+            for obj in contents:
                 # Check if file has been processed by looking up in database
                 status = "unprocessed"
                 if session:
@@ -83,10 +96,22 @@ class S3Service:
         except Exception as e:
             raise Exception(f"Error listing bucket files: {str(e)}")
 
-    async def list_processed_files(self, session: Session):
+    async def list_processed_files(self, session: Session, since: str = None):
         """List processed files with their status"""
         try:
-            docs = session.query(Document).all()
+            query = session.query(Document)
+            
+            if since:
+                try:
+                    # Try parsing as ULID first
+                    since_ts = datetime.fromtimestamp(ulid.parse(since).timestamp())
+                except ValueError:
+                    # Parse as ISO timestamp
+                    since_ts = datetime.fromisoformat(since.replace('Z', '+00:00'))
+                
+                query = query.filter(Document.created_at >= since_ts)
+                
+            docs = query.all()
             return [{
                 "id": doc.id,
                 "filename": doc.processed_filename,

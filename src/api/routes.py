@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from ..models.documents import SessionLocal
 from ..services.s3_service import S3Service
 from typing import List, Dict
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
+from datetime import datetime
 import os
 
 class FileResponse(BaseModel):
@@ -15,6 +16,23 @@ class FileResponse(BaseModel):
 class ProcessingResponse(BaseModel):
     status: str
     message: str
+
+class TimeFilter(BaseModel):
+    since: str  # Can be timestamp or ULID
+    
+    @validator('since')
+    def validate_since(cls, v):
+        # Try parsing as ULID first
+        try:
+            ulid.parse(v)
+            return v
+        except ValueError:
+            # Try parsing as timestamp
+            try:
+                datetime.fromisoformat(v.replace('Z', '+00:00'))
+                return v
+            except ValueError:
+                raise ValueError("since must be a valid ULID or ISO timestamp")
 
 router = APIRouter()
 s3_service = S3Service()
@@ -27,7 +45,11 @@ def get_db():
         db.close()
 
 @router.get("/files", response_model=List[FileResponse])
-async def list_files(source: str = "bucket", db: Session = Depends(get_db)):
+async def list_files(
+    source: str = "bucket",
+    since: str = None,
+    db: Session = Depends(get_db)
+):
     """
     List files from either source folder or processed folder
     source: 'bucket' for source folder, 'parsed' for processed folder
@@ -36,10 +58,18 @@ async def list_files(source: str = "bucket", db: Session = Depends(get_db)):
         raise HTTPException(400, "Invalid source parameter")
     
     try:
-        if source == "bucket":
-            return await s3_service.list_files(db)
+        if since:
+            # Validate since parameter
+            TimeFilter(since=since)
+            if source == "bucket":
+                return await s3_service.list_files(db, since=since)
+            else:
+                return await s3_service.list_processed_files(db, since=since)
         else:
-            return await s3_service.list_processed_files(db)
+            if source == "bucket":
+                return await s3_service.list_files(db)
+            else:
+                return await s3_service.list_processed_files(db)
     except Exception as e:
         raise HTTPException(500, f"Error listing files: {str(e)}")
 
