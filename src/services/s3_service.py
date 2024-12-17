@@ -17,9 +17,18 @@ class S3Service:
         # Disable SSL warnings for local development
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         
-        endpoint_url = os.getenv('S3_ENDPOINT')
-        if not endpoint_url:
+        # Validate required environment variables
+        self.endpoint_url = os.getenv('S3_ENDPOINT')
+        self.source_bucket = os.getenv('SOURCE_BUCKET')
+        self.access_key = os.getenv('S3_ACCESS_KEY')
+        self.secret_key = os.getenv('S3_SECRET_KEY')
+        
+        if not self.endpoint_url:
             raise ValueError("S3_ENDPOINT environment variable is required")
+        if not self.source_bucket:
+            raise ValueError("SOURCE_BUCKET environment variable is required")
+        if not self.access_key or not self.secret_key:
+            raise ValueError("S3_ACCESS_KEY and S3_SECRET_KEY environment variables are required")
             
         # Ensure endpoint includes API port for MinIO (typically :9000)
         if ':' not in endpoint_url:
@@ -62,7 +71,7 @@ class S3Service:
         """List files from source bucket with accurate processing status"""
         try:
             response = self.s3_client.list_objects_v2(
-                Bucket=os.getenv('SOURCE_BUCKET'),
+                Bucket=self.source_bucket,
                 Prefix=self.source_prefix
             )
             
@@ -147,24 +156,31 @@ class S3Service:
             
             try:
                 obj = self.s3_client.head_object(
-                    Bucket=os.getenv('SOURCE_BUCKET'),
+                    Bucket=self.source_bucket,
                     Key=file_id
                 )
             except ClientError as e:
-                if e.response['Error']['Code'] == '404':
-                    log_api_error(self.logger, e, {
-                        "file_id": file_id,
-                        "bucket": os.getenv('SOURCE_BUCKET'),
-                        "operation": "head_object"
-                    })
-                    raise FileNotFoundError(f"File {file_id} not found in bucket {os.getenv('SOURCE_BUCKET')}")
-                log_api_error(self.logger, e, {
+                error_code = e.response['Error']['Code']
+                error_msg = e.response['Error']['Message']
+                context = {
                     "file_id": file_id,
-                    "bucket": os.getenv('SOURCE_BUCKET'),
+                    "bucket": self.source_bucket,
                     "operation": "head_object",
-                    "error_code": e.response['Error']['Code']
-                })
-                raise
+                    "error_code": error_code
+                }
+                
+                if error_code == '404':
+                    log_api_error(self.logger, e, context)
+                    raise FileNotFoundError(f"File '{file_id}' not found in bucket '{self.source_bucket}'")
+                elif error_code == '403':
+                    log_api_error(self.logger, e, context)
+                    raise PermissionError(
+                        f"Access denied to file '{file_id}' in bucket '{self.source_bucket}'. "
+                        "Please verify S3 credentials and bucket permissions."
+                    )
+                else:
+                    log_api_error(self.logger, e, context)
+                    raise Exception(f"S3 error accessing file '{file_id}': {error_msg}")
             
             # Check if already processed
             doc = session.query(Document).filter_by(

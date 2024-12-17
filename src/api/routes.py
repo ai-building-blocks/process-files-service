@@ -102,9 +102,18 @@ async def process_file(file_id: str, db: Session = Depends(get_db)):
         return {"status": "success", "message": f"File {file_id} processed successfully"}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except FileNotFoundError as e:
+        log_api_error(logger, e, {"file_id": file_id, "operation": "process_file"})
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        log_api_error(logger, e, {"file_id": file_id, "operation": "process_file"})
+        raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
         log_api_error(logger, e, {"file_id": file_id, "operation": "process_file"})
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal error processing file '{file_id}'. Please contact support if the issue persists."
+        )
 
 @router.post("/process", response_model=ProcessingResponse)
 async def trigger_processing():
