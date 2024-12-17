@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from ..utils.logging import get_logger, log_api_error
 import httpx
 from sqlalchemy.orm import Session
-from ..models.documents import SessionLocal
+from ..models.documents import SessionLocal, Document
 from ..services.s3_service import S3Service
 from typing import List, Dict
 import ulid
