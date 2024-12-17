@@ -5,7 +5,7 @@
 - [x] Create basic project structure
 - [x] Add basic README documentation
 - [x] Set up pyproject.toml for dependency management
-- [ ] Create GitHub repository
+- [x] Set up Docker multi-stage builds
 - [ ] Add LICENSE file (suggest MIT)
 - [ ] Update README with correct GitHub repository links
 - [ ] Add pre-commit hooks for code formatting
@@ -22,6 +22,7 @@
 ## S3/MinIO Integration
 - [x] Add boto3 dependency
 - [x] Create S3 client configuration
+- [x] Basic S3 operations implementation
 - [ ] Implement robust error handling for S3 operations
 - [ ] Add retry mechanisms for S3 operations
 - [ ] Add S3 bucket validation on startup
