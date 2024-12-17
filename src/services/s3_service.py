@@ -1,0 +1,70 @@
+import boto3
+import os
+import tempfile
+import requests
+import ulid
+from datetime import datetime
+from sqlalchemy.orm import Session
+from ..models.documents import Document
+
+class S3Service:
+    def __init__(self):
+        self.s3_client = boto3.client(
+            's3',
+            endpoint_url=os.getenv('S3_ENDPOINT'),
+            aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
+            aws_secret_access_key=os.getenv('S3_SECRET_KEY')
+        )
+        
+    async def process_new_files(self, session: Session):
+        objects = self.s3_client.list_objects_v2(Bucket=os.getenv('SOURCE_BUCKET'))
+        
+        for obj in objects.get('Contents', []):
+            doc = session.query(Document).filter_by(
+                original_filename=obj['Key']
+            ).order_by(Document.created_at.desc()).first()
+            
+            if not doc or doc.s3_last_modified < obj['LastModified']:
+                await self._process_file(obj, session)
+    
+    async def _process_file(self, obj, session: Session):
+        with tempfile.NamedTemporaryFile() as tmp:
+            self.s3_client.download_file(
+                os.getenv('SOURCE_BUCKET'),
+                obj['Key'],
+                tmp.name
+            )
+            
+            files = {'file': open(tmp.name, 'rb')}
+            response = requests.post(
+                os.getenv('CONVERTER_SERVICE_URL'),
+                files=files
+            )
+            
+            if response.status_code == 200:
+                content = response.json()['markdown_content']
+                file_id = str(ulid.new())
+                
+                # Save locally
+                os.makedirs('data/processed', exist_ok=True)
+                with open(f'data/processed/{file_id}.md', 'w') as f:
+                    f.write(content)
+                
+                # Save to destination bucket if configured
+                if os.getenv('DESTINATION_BUCKET'):
+                    self.s3_client.put_object(
+                        Bucket=os.getenv('DESTINATION_BUCKET'),
+                        Key=f'{file_id}.md',
+                        Body=content
+                    )
+                
+                # Update database
+                doc = Document(
+                    id=file_id,
+                    original_filename=obj['Key'],
+                    processed_filename=f'{file_id}.md',
+                    version='1.0',
+                    s3_last_modified=obj['LastModified']
+                )
+                session.add(doc)
+                session.commit()
