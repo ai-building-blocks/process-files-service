@@ -13,6 +13,19 @@
 - ✅ Added SQLite persistence layer
 - ✅ Created project structure with UV package manager
 
+### Phase 2: S3 Configuration (2024-12-17) - COMPLETED
+- ✅ Added configurable SSL verification for S3/MinIO
+- ✅ Implemented configurable prefix paths
+- ✅ Added prefix validation
+- ✅ Improved S3 client configuration
+- ✅ Added proper error handling for S3 operations
+
+### Phase 3: Infrastructure (2024-12-17 - In Progress)
+- ✅ Created initial FastAPI application structure
+- ✅ Implemented basic file monitoring and processing
+- ✅ Added SQLite persistence layer
+- ✅ Created project structure with UV package manager
+
 **Key Decisions**:
 - Selected FastAPI for its async capabilities and automatic OpenAPI documentation
 - Chose SQLite for initial persistence layer due to simplicity

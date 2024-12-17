@@ -27,8 +27,10 @@ SOURCE_BUCKET=source-docs
 DESTINATION_BUCKET=processed-docs
 S3_USE_PATH_STYLE=true  # Required for MinIO/path-style S3 endpoints
 S3_VERIFY_SSL=false     # Disable SSL verification for local development
+SOURCE_PREFIX=downloads/      # Source folder prefix for documents
+DESTINATION_PREFIX=processed/ # Destination folder for processed files
 
-# Create required buckets in MinIO:
+# Create required buckets and folders in MinIO:
 mc alias set myminio http://localhost:9000 your_access_key your_secret_key
 mc mb myminio/source-docs
 mc mb myminio/processed-docs
