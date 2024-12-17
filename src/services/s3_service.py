@@ -5,7 +5,7 @@ import requests
 import ulid
 from datetime import datetime
 from sqlalchemy.orm import Session
-from ..models.documents import Document
+from src.models.documents import Document
 
 class S3Service:
     def __init__(self):

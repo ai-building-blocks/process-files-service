@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from models.documents import SessionLocal
+from src.models.documents import SessionLocal
 from services.s3_service import S3Service
 
 async def process_files():
