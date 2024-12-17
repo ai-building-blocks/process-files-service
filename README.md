@@ -31,7 +31,7 @@ A robust service for pre-processing documents stored in S3/MinIO buckets, specif
 
 4. Install dependencies:
    ```bash
-   uv pip install -r requirements.txt
+   uv pip install .
    ```
 
 5. Copy `.env.template` to `.env` and configure:

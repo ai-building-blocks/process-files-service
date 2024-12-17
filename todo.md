@@ -4,6 +4,7 @@
 - [x] Create initial FastAPI application structure
 - [x] Create basic project structure
 - [x] Add basic README documentation
+- [x] Set up pyproject.toml for dependency management
 - [ ] Create GitHub repository
 - [ ] Add LICENSE file (suggest MIT)
 - [ ] Update README with correct GitHub repository links

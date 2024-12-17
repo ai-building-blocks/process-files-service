@@ -17,8 +17,9 @@
 - Selected FastAPI for its async capabilities and automatic OpenAPI documentation
 - Chose SQLite for initial persistence layer due to simplicity
 - Implemented background processing for file monitoring
-- Using UV as package manager for better dependency resolution and performance
+- Using UV as package manager with pyproject.toml for better dependency resolution and performance
 - Implemented ULID-based file naming for uniqueness and sorting capabilities
+- Chose pyproject.toml over requirements.txt for modern Python packaging
 
 **Technical Debt**:
 - Need to add proper error handling for S3 operations

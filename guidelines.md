@@ -11,7 +11,7 @@ Please follow these guidelines for your response:
 8. Ensure consistent naming and style
 9. Include proper error handling
 10. Update README.md if functionality changes
-11. Use uv for package management
+11. Use uv for package management with pyproject.toml
 
 ## Core Principles
 
