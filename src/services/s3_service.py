@@ -150,7 +150,13 @@ class S3Service:
                         "bucket": os.getenv('SOURCE_BUCKET'),
                         "operation": "head_object"
                     })
-                    raise Exception(f"File {file_id} not found in bucket {os.getenv('SOURCE_BUCKET')}")
+                    raise FileNotFoundError(f"File {file_id} not found in bucket {os.getenv('SOURCE_BUCKET')}")
+                log_api_error(self.logger, e, {
+                    "file_id": file_id,
+                    "bucket": os.getenv('SOURCE_BUCKET'),
+                    "operation": "head_object",
+                    "error_code": e.response['Error']['Code']
+                })
                 raise
             
             # Check if already processed

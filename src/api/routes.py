@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
+from ..utils.logging import get_logger, log_api_error
 import httpx
 from sqlalchemy.orm import Session
 from ..models.documents import SessionLocal
@@ -36,6 +37,7 @@ class TimeFilter(BaseModel):
                 raise ValueError("since must be a valid ULID or ISO timestamp")
 
 router = APIRouter()
+logger = get_logger(__name__)
 s3_service = S3Service()
 
 def get_db():
@@ -96,8 +98,11 @@ async def process_file(file_id: str, db: Session = Depends(get_db)):
     try:
         result = await s3_service.process_single_file(file_id, db)
         return {"status": "success", "message": f"File {file_id} processed successfully"}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(500, f"Error processing file: {str(e)}")
+        log_api_error(logger, e, {"file_id": file_id, "operation": "process_file"})
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 @router.post("/process", response_model=ProcessingResponse)
 async def trigger_processing():
