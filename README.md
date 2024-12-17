@@ -132,6 +132,13 @@ python -m src.worker
     - `source`: 'bucket' or 'parsed'
   - Returns: File details
 
+- `POST /api/files/{identifier}/process` - Process specific file
+  - Path params:
+    - `identifier`: File ID (ULID) or original filename
+  - Request body:
+    - `identifier_type`: "id" or "filename" (default: "id")
+  - Returns: Processing status and message
+
 - `GET /api/files/status` - Check processing status
   - Returns: Status of all files in processing
 

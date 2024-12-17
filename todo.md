@@ -59,6 +59,8 @@
 ## API Enhancements
 - [x] Implement basic file listing
 - [x] Add file retrieval endpoints
+- [x] Add flexible file identification (ID/filename)
+- [x] Implement robust error handling
 - [ ] Add pagination support
 - [ ] Add filtering capabilities
 - [ ] Add sorting options
