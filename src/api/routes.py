@@ -39,7 +39,7 @@ async def list_files(source: str = "bucket", db: Session = Depends(get_db)):
         if source == "bucket":
             return await s3_service.list_files()
         else:
-            return await s3_service.list_processed_files(session)
+            return await s3_service.list_processed_files(db)
     except Exception as e:
         raise HTTPException(500, f"Error listing files: {str(e)}")
 
@@ -51,11 +51,11 @@ async def get_file(file_id: str, source: str, db: Session = Depends(get_db)):
     if source == "bucket":
         return await s3_service.get_file(file_id)
     else:
-        return await s3_service.get_processed_file(file_id, session)
+        return await s3_service.get_processed_file(file_id, db)
 
 @router.get("/files/status", response_model=Dict[str, str])
 async def get_files_status(db: Session = Depends(get_db)):
-    return await s3_service.get_files_status(session)
+    return await s3_service.get_files_status(db)
 
 @router.post("/process", response_model=ProcessingResponse)
 async def trigger_processing():
