@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    /root/.cargo/bin/uv --version
 
 # Set working directory
 WORKDIR /app
@@ -18,8 +19,10 @@ COPY pyproject.toml .
 COPY src/ src/
 
 # Create venv and install dependencies
-RUN /root/.cargo/bin/uv venv
-RUN /root/.cargo/bin/uv pip install .
+ENV PATH="/root/.cargo/bin:$PATH"
+RUN uv venv && \
+    . .venv/bin/activate && \
+    uv pip install .
 
 # Runtime stage
 FROM python:3.11-slim
