@@ -1,4 +1,5 @@
 import boto3
+from botocore.config import Config
 import os
 import tempfile
 import requests
@@ -9,7 +10,7 @@ from src.models.documents import Document
 
 class S3Service:
     def __init__(self):
-        config = boto3.Config(
+        config = Config(
             s3={'addressing_style': 'path' if os.getenv('S3_USE_PATH_STYLE', 'true').lower() == 'true' else 'auto'}
         )
             
