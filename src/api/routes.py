@@ -44,8 +44,18 @@ async def get_files_status(session: Session = SessionLocal()):
 async def trigger_processing():
     """Trigger the worker to process new files"""
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post("http://worker:8081/process")
-            return response.json()
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Worker error: {response.text}"
+                )
+    except httpx.TimeoutException:
+        raise HTTPException(504, "Worker processing timed out")
+    except httpx.RequestError as e:
+        raise HTTPException(502, f"Error connecting to worker: {str(e)}")
     except Exception as e:
         raise HTTPException(500, f"Error triggering processing: {str(e)}")
