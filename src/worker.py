@@ -1,20 +1,28 @@
-import asyncio
 from dotenv import load_dotenv
 from models.documents import SessionLocal
 from services.s3_service import S3Service
 
 async def process_files():
+    """Process new files once when requested"""
     load_dotenv()
     session = SessionLocal()
     s3_service = S3Service()
     
-    while True:
-        try:
-            await s3_service.process_new_files(session)
-        except Exception as e:
-            print(f"Error processing files: {e}")
-        
-        await asyncio.sleep(60)
+    try:
+        await s3_service.process_new_files(session)
+        return {"status": "success", "message": "Files processed"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
-    asyncio.run(process_files())
+    # Worker now waits for API requests instead of running continuously
+    import uvicorn
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    
+    @app.post("/process")
+    async def trigger_processing():
+        return await process_files()
+    
+    uvicorn.run(app, host="0.0.0.0", port=8081)

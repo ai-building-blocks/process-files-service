@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException
+import httpx
 from sqlalchemy.orm import Session
 from ..models.documents import SessionLocal
 from ..services.s3_service import S3Service
 from typing import List, Optional
+import os
 
 router = APIRouter()
 s3_service = S3Service()
@@ -37,3 +39,13 @@ async def get_file(file_id: str, source: str, session: Session = SessionLocal())
 @router.get("/files/status")
 async def get_files_status(session: Session = SessionLocal()):
     return await s3_service.get_files_status(session)
+
+@router.post("/process")
+async def trigger_processing():
+    """Trigger the worker to process new files"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post("http://worker:8081/process")
+            return response.json()
+    except Exception as e:
+        raise HTTPException(500, f"Error triggering processing: {str(e)}")
