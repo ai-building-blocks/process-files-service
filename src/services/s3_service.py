@@ -104,6 +104,7 @@ class S3Service:
                 Bucket=self.source_bucket,
                 Prefix=self.source_prefix
             )
+            self.logger.debug(f"Listed {len(response.get('Contents', []))} objects in {self.source_bucket}/{self.source_prefix}")
             
             files = []
             contents = response.get('Contents', [])
