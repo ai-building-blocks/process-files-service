@@ -163,7 +163,7 @@ class S3Service:
     async def process_new_files(self, session: Session):
         """Process all new files in the source bucket"""
         objects = self.s3_client.list_objects_v2(
-            Bucket=os.getenv('SOURCE_BUCKET'),
+            Bucket=self.source_bucket,
             Prefix=self.source_prefix
         )
         
@@ -187,7 +187,8 @@ class S3Service:
                     "file_id": file_id,
                     "bucket": self.source_bucket,
                     "operation": "head_object",
-                    "error_code": error_code
+                    "error_code": error_code,
+                    "error_message": error_msg
                 }
                 
                 if error_code == '404':
