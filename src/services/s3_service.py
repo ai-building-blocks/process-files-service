@@ -249,8 +249,13 @@ class S3Service:
                 original_filename=file_id
             ).order_by(Document.created_at.desc()).first()
             
-            if doc and doc.s3_last_modified >= file_metadata['LastModified']:
-                return {"status": "skipped", "message": "File already processed"}
+            if doc:
+                # Convert both to UTC naive for comparison
+                doc_modified = doc.s3_last_modified.replace(tzinfo=None)
+                s3_modified = file_metadata['LastModified'].replace(tzinfo=None)
+                
+                if doc_modified >= s3_modified:
+                    return {"status": "skipped", "message": "File already processed"}
             
             # Process the file
             await self._process_file(file_metadata, session)
@@ -308,7 +313,7 @@ class S3Service:
             with open(temp_filepath, 'wb') as f:
                 f.write(content)
             
-            # Update document status to downloaded
+            # Create or update document status
             doc = Document(
                 id=str(ulid.new()),
                 original_filename=obj['Key'],
@@ -316,8 +321,9 @@ class S3Service:
                 version='1.0',
                 status='downloaded',
                 downloaded_at=datetime.utcnow(),
-                s3_last_modified=obj['LastModified']
+                s3_last_modified=obj['LastModified'].replace(tzinfo=None)  # Store as naive UTC
             )
+            self.logger.info(f"Created document record for {obj['Key']}")
             session.add(doc)
             session.commit()
             
