@@ -306,20 +306,26 @@ class S3Service:
             raise Exception(f"Error processing file {file_id}: {str(e)}")
     
     async def _process_file(self, obj, session: Session):
-        with tempfile.NamedTemporaryFile() as tmp:
-            self.s3_client.download_file(
-                os.getenv('SOURCE_BUCKET'),
-                obj['Key'],
-                tmp.name
+        try:
+            # Get the object once
+            response = self.s3_client.get_object(
+                Bucket=self.source_bucket,
+                Key=obj['Key']
             )
+            content = response['Body'].read()
             
-            files = {'file': open(tmp.name, 'rb')}
-            response = requests.post(
-                os.getenv('CONVERTER_SERVICE_URL'),
-                files=files
-            )
-            
-            if response.status_code == 200:
+            with tempfile.NamedTemporaryFile() as tmp:
+                # Write the content we already have to temp file
+                tmp.write(content)
+                tmp.flush()
+                
+                files = {'file': open(tmp.name, 'rb')}
+                response = requests.post(
+                    os.getenv('CONVERTER_SERVICE_URL'),
+                    files=files
+                )
+                
+                if response.status_code == 200:
                 content = response.json()['markdown_content']
                 file_id = str(ulid.new())
                 
