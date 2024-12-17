@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from src.models.documents import SessionLocal
-from services.s3_service import S3Service
+from src.services.s3_service import S3Service
 
 async def process_files():
     """Process new files once when requested"""
