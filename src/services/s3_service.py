@@ -36,8 +36,24 @@ class S3Service:
             config=config,
             verify=False  # For local MinIO instances
         )
-        self.source_prefix = os.getenv('SOURCE_PREFIX', 'downloads/')
-        self.destination_prefix = os.getenv('DESTINATION_PREFIX', 'processed/')
+        # Get prefixes from environment with validation
+        self.source_prefix = self._validate_prefix(os.getenv('SOURCE_PREFIX', 'downloads/'))
+        self.destination_prefix = self._validate_prefix(os.getenv('DESTINATION_PREFIX', 'processed/'))
+
+    def _validate_prefix(self, prefix: str) -> str:
+        """Validate and normalize S3 prefix format"""
+        if not prefix:
+            raise ValueError("Prefix cannot be empty")
+        
+        # Ensure prefix ends with forward slash
+        if not prefix.endswith('/'):
+            prefix += '/'
+            
+        # Remove leading slash if present
+        if prefix.startswith('/'):
+            prefix = prefix[1:]
+            
+        return prefix
         
     async def list_files(self, session: Session = None):
         """List files from source bucket with accurate processing status"""
