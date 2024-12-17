@@ -96,18 +96,40 @@ class S3Service:
             raise Exception(f"Error listing processed files: {str(e)}")
 
     async def process_new_files(self, session: Session):
+        """Process all new files in the source bucket"""
         objects = self.s3_client.list_objects_v2(
             Bucket=os.getenv('SOURCE_BUCKET'),
             Prefix=self.source_prefix
         )
         
         for obj in objects.get('Contents', []):
+            await self.process_single_file(obj['Key'], session)
+
+    async def process_single_file(self, file_id: str, session: Session):
+        """Process a specific file by its ID"""
+        try:
+            # Get file details from S3
+            obj = self.s3_client.head_object(
+                Bucket=os.getenv('SOURCE_BUCKET'),
+                Key=file_id
+            )
+            
+            # Check if already processed
             doc = session.query(Document).filter_by(
-                original_filename=obj['Key']
+                original_filename=file_id
             ).order_by(Document.created_at.desc()).first()
             
-            if not doc or doc.s3_last_modified < obj['LastModified']:
-                await self._process_file(obj, session)
+            if doc and doc.s3_last_modified >= obj['LastModified']:
+                return {"status": "skipped", "message": "File already processed"}
+            
+            # Process the file
+            await self._process_file({"Key": file_id, "LastModified": obj['LastModified']}, session)
+            return {"status": "success", "message": "File processed successfully"}
+            
+        except self.s3_client.exceptions.NoSuchKey:
+            raise Exception(f"File {file_id} not found in bucket")
+        except Exception as e:
+            raise Exception(f"Error processing file {file_id}: {str(e)}")
     
     async def _process_file(self, obj, session: Session):
         with tempfile.NamedTemporaryFile() as tmp:

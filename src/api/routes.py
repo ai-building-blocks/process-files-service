@@ -43,8 +43,14 @@ async def list_files(source: str = "bucket", db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(500, f"Error listing files: {str(e)}")
 
+@router.get("/status", response_model=Dict[str, str])
+async def get_files_status(db: Session = Depends(get_db)):
+    """Get processing status for all files"""
+    return await s3_service.get_files_status(db)
+
 @router.get("/files/{file_id}", response_model=FileResponse)
 async def get_file(file_id: str, source: str, db: Session = Depends(get_db)):
+    """Get details for a specific file"""
     if source not in ["bucket", "parsed"]:
         raise HTTPException(400, "Invalid source parameter")
     
@@ -53,9 +59,14 @@ async def get_file(file_id: str, source: str, db: Session = Depends(get_db)):
     else:
         return await s3_service.get_processed_file(file_id, db)
 
-@router.get("/files/status", response_model=Dict[str, str])
-async def get_files_status(db: Session = Depends(get_db)):
-    return await s3_service.get_files_status(db)
+@router.post("/files/{file_id}/process", response_model=ProcessingResponse)
+async def process_file(file_id: str, db: Session = Depends(get_db)):
+    """Process a specific file by ID"""
+    try:
+        result = await s3_service.process_single_file(file_id, db)
+        return {"status": "success", "message": f"File {file_id} processed successfully"}
+    except Exception as e:
+        raise HTTPException(500, f"Error processing file: {str(e)}")
 
 @router.post("/process", response_model=ProcessingResponse)
 async def trigger_processing():
