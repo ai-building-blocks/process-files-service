@@ -49,22 +49,31 @@ class S3Service:
             verify=os.getenv('S3_VERIFY_SSL', 'true').lower() == 'true'
         )
         
-        # Validate bucket access
+        # Validate bucket access and create if needed
         try:
             self.s3_client.head_bucket(Bucket=self.source_bucket)
+            self.logger.info(f"Successfully connected to bucket '{self.source_bucket}'")
         except ClientError as e:
             error_code = e.response['Error']['Code']
             error_msg = e.response['Error'].get('Message', '')
             if error_code == '403':
                 self.logger.error(f"Access denied to bucket '{self.source_bucket}'. Error: {error_msg}")
+                self.logger.error("Current credentials:")
+                self.logger.error(f"Access Key: {self.access_key[:4]}...{self.access_key[-4:]}")
+                self.logger.error(f"Endpoint: {self.endpoint_url}")
                 raise PermissionError(
                     f"Access denied to bucket '{self.source_bucket}'. "
                     f"Error: {error_msg}. "
                     "Please verify S3 credentials and bucket permissions."
                 )
             elif error_code == '404':
-                self.logger.error(f"Bucket '{self.source_bucket}' does not exist. Error: {error_msg}")
-                raise ValueError(f"Bucket '{self.source_bucket}' does not exist. Error: {error_msg}")
+                self.logger.warning(f"Bucket '{self.source_bucket}' does not exist, attempting to create...")
+                try:
+                    self.s3_client.create_bucket(Bucket=self.source_bucket)
+                    self.logger.info(f"Successfully created bucket '{self.source_bucket}'")
+                except ClientError as create_error:
+                    self.logger.error(f"Failed to create bucket: {str(create_error)}")
+                    raise ValueError(f"Cannot create bucket '{self.source_bucket}'. Error: {str(create_error)}")
             else:
                 self.logger.error(f"S3 error: {error_code} - {error_msg}")
                 raise
