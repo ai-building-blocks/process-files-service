@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
-    /root/.cargo/bin/uv --version
+    export PATH="/root/.local/bin:$PATH" && \
+    uv --version
 
 # Set working directory
 WORKDIR /app
@@ -19,7 +20,7 @@ COPY pyproject.toml .
 COPY src/ src/
 
 # Create venv and install dependencies
-ENV PATH="/root/.cargo/bin:$PATH"
+ENV PATH="/root/.local/bin:$PATH"
 RUN uv venv && \
     . .venv/bin/activate && \
     uv pip install .
