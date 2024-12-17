@@ -15,7 +15,26 @@ A robust service for pre-processing documents stored in S3/MinIO buckets, specif
 ## Quick Start
 
 1. Clone the repository
-2. Copy `.env.template` to `.env` and configure:
+
+2. Install uv (if not already installed):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+3. Create and activate virtual environment:
+   ```bash
+   uv venv
+   source .venv/bin/activate  # On Unix/MacOS
+   # or
+   .venv\Scripts\activate  # On Windows
+   ```
+
+4. Install dependencies:
+   ```bash
+   uv pip install -r requirements.txt
+   ```
+
+5. Copy `.env.template` to `.env` and configure:
    ```env
    S3_ENDPOINT=your-s3-endpoint
    S3_ACCESS_KEY=your-access-key
@@ -24,14 +43,18 @@ A robust service for pre-processing documents stored in S3/MinIO buckets, specif
    DESTINATION_BUCKET=your-destination-bucket
    CONVERTER_SERVICE_URL=http://localhost:8000/convert
    ```
-3. Start the service:
+
+6. Start the service:
    ```bash
    uvicorn src.main:app --reload
    ```
-4. Start the worker (in a separate terminal):
+
+7. Start the worker (in a separate terminal):
    ```bash
    python src/worker.py
    ```
+
+Note: Always ensure you're in the virtual environment (step 3) before running any commands. You'll know you're in the virtual environment when you see (.venv) at the start of your terminal prompt.
 
 ## API Endpoints
 
