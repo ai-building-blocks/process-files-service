@@ -309,6 +309,7 @@ class S3Service:
                 self.logger.error(f"No content provided for file {obj['Key']}")
                 raise ValueError("File content not provided")
                 
+            try:
             with tempfile.NamedTemporaryFile() as tmp:
                 # Write the content we already have to temp file
                 tmp.write(content)
@@ -325,25 +326,27 @@ class S3Service:
                     file_id = str(ulid.new())
                     
                     # Save locally
-                os.makedirs('data/processed', exist_ok=True)
-                with open(f'data/processed/{file_id}.md', 'w') as f:
-                    f.write(content)
-                
-                # Save to destination folder
-                destination_key = f"{self.destination_prefix}{file_id}.md"
-                self.s3_client.put_object(
-                    Bucket=os.getenv('SOURCE_BUCKET'),
-                    Key=destination_key,
-                    Body=content
-                )
-                
-                # Update database
-                doc = Document(
-                    id=file_id,
-                    original_filename=obj['Key'],
-                    processed_filename=f'{file_id}.md',
-                    version='1.0',
-                    s3_last_modified=obj['LastModified']
-                )
-                session.add(doc)
-                session.commit()
+                    os.makedirs('data/processed', exist_ok=True)
+                    with open(f'data/processed/{file_id}.md', 'w') as f:
+                        f.write(content)
+                    
+                    # Save to destination folder
+                    destination_key = f"{self.destination_prefix}{file_id}.md"
+                    self.s3_client.put_object(
+                        Bucket=os.getenv('SOURCE_BUCKET'),
+                        Key=destination_key,
+                        Body=content
+                    )
+                    
+                    # Update database
+                    doc = Document(
+                        id=file_id,
+                        original_filename=obj['Key'],
+                        processed_filename=f'{file_id}.md',
+                        version='1.0',
+                        s3_last_modified=obj['LastModified']
+                    )
+                    session.add(doc)
+                    session.commit()
+                else:
+                    raise ValueError(f"Conversion service returned status {response.status_code}")
