@@ -9,14 +9,18 @@ from src.models.documents import Document
 
 class S3Service:
     def __init__(self):
+        config = boto3.client('s3').meta.config.copy()
+        if os.getenv('S3_USE_PATH_STYLE', 'true').lower() == 'true':
+            config.s3['addressing_style'] = 'path'
+        else:
+            config.s3['addressing_style'] = 'auto'
+            
         self.s3_client = boto3.client(
             's3',
             endpoint_url=os.getenv('S3_ENDPOINT'),
             aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
             aws_secret_access_key=os.getenv('S3_SECRET_KEY'),
-            config=boto3.Config(
-                s3={'addressing_style': 'path'} if os.getenv('S3_USE_PATH_STYLE', 'true').lower() == 'true' else {'addressing_style': 'auto'}
-            )
+            config=config
         )
         self.source_prefix = os.getenv('SOURCE_PREFIX', 'downloads/')
         self.destination_prefix = os.getenv('DESTINATION_PREFIX', 'processed/')
