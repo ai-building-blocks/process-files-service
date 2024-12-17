@@ -35,8 +35,8 @@ class S3Service:
         self.source_prefix = os.getenv('SOURCE_PREFIX', 'downloads/')
         self.destination_prefix = os.getenv('DESTINATION_PREFIX', 'processed/')
         
-    async def list_files(self):
-        """List files from source bucket"""
+    async def list_files(self, session: Session = None):
+        """List files from source bucket with accurate processing status"""
         try:
             response = self.s3_client.list_objects_v2(
                 Bucket=os.getenv('SOURCE_BUCKET'),
@@ -45,10 +45,19 @@ class S3Service:
             
             files = []
             for obj in response.get('Contents', []):
+                # Check if file has been processed by looking up in database
+                status = "unprocessed"
+                if session:
+                    doc = session.query(Document).filter_by(
+                        original_filename=obj['Key']
+                    ).first()
+                    if doc:
+                        status = "processed"
+                
                 files.append({
                     "id": str(ulid.new()),
                     "filename": obj['Key'],
-                    "status": "pending"
+                    "status": status
                 })
             return files
         except Exception as e:

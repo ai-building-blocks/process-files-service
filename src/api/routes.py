@@ -37,7 +37,7 @@ async def list_files(source: str = "bucket", db: Session = Depends(get_db)):
     
     try:
         if source == "bucket":
-            return await s3_service.list_files()
+            return await s3_service.list_files(db)
         else:
             return await s3_service.list_processed_files(db)
     except Exception as e:
