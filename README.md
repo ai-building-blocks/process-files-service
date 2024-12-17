@@ -20,11 +20,17 @@ Automatically processes documents from S3/MinIO buckets and converts them to mar
 cp .env.template .env
 
 # Configure your S3/MinIO credentials in .env:
-S3_ENDPOINT=http://minio:9000
+S3_ENDPOINT=http://localhost:9000  # Use your MinIO endpoint
 S3_ACCESS_KEY=your_access_key
 S3_SECRET_KEY=your_secret_key
 SOURCE_BUCKET=source-docs
 DESTINATION_BUCKET=processed-docs
+S3_USE_PATH_STYLE=true  # Required for MinIO/path-style S3 endpoints
+
+# Create required buckets in MinIO:
+mc alias set myminio http://localhost:9000 your_access_key your_secret_key
+mc mb myminio/source-docs
+mc mb myminio/processed-docs
 ```
 
 2. **Start Services**

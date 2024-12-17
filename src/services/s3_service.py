@@ -13,7 +13,10 @@ class S3Service:
             's3',
             endpoint_url=os.getenv('S3_ENDPOINT'),
             aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
-            aws_secret_access_key=os.getenv('S3_SECRET_KEY')
+            aws_secret_access_key=os.getenv('S3_SECRET_KEY'),
+            config=boto3.Config(
+                s3={'addressing_style': 'path'} if os.getenv('S3_USE_PATH_STYLE', 'true').lower() == 'true' else {'addressing_style': 'auto'}
+            )
         )
         self.source_prefix = os.getenv('SOURCE_PREFIX', 'downloads/')
         self.destination_prefix = os.getenv('DESTINATION_PREFIX', 'processed/')
