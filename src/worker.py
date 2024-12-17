@@ -16,6 +16,7 @@ async def process_files():
 
 if __name__ == "__main__":
     # Worker now waits for API requests instead of running continuously
+    import os
     import uvicorn
     from fastapi import FastAPI
 

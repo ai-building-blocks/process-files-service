@@ -15,7 +15,7 @@ docker compose up --build -d
 docker compose logs -f
 ```
 
-The API will be available at http://localhost:8080/docs
+The API will be available at http://localhost:8070/docs
 
 ## Manual Setup
 
