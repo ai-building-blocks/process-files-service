@@ -18,6 +18,37 @@ class S3Service:
         self.source_prefix = os.getenv('SOURCE_PREFIX', 'downloads/')
         self.destination_prefix = os.getenv('DESTINATION_PREFIX', 'processed/')
         
+    async def list_files(self):
+        """List files from source bucket"""
+        try:
+            response = self.s3_client.list_objects_v2(
+                Bucket=os.getenv('SOURCE_BUCKET'),
+                Prefix=self.source_prefix
+            )
+            
+            files = []
+            for obj in response.get('Contents', []):
+                files.append({
+                    "id": str(ulid.new()),
+                    "filename": obj['Key'],
+                    "status": "pending"
+                })
+            return files
+        except Exception as e:
+            raise Exception(f"Error listing bucket files: {str(e)}")
+
+    async def list_processed_files(self, session: Session):
+        """List processed files with their status"""
+        try:
+            docs = session.query(Document).all()
+            return [{
+                "id": doc.id,
+                "filename": doc.processed_filename,
+                "status": "processed"
+            } for doc in docs]
+        except Exception as e:
+            raise Exception(f"Error listing processed files: {str(e)}")
+
     async def process_new_files(self, session: Session):
         objects = self.s3_client.list_objects_v2(
             Bucket=os.getenv('SOURCE_BUCKET'),
