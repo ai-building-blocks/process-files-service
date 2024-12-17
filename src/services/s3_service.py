@@ -1,6 +1,8 @@
 import boto3
 import urllib3
 from botocore.config import Config
+from botocore.exceptions import ClientError
+from ..utils.logging import get_logger, log_api_error, log_s3_operation
 import os
 import tempfile
 import requests
@@ -11,6 +13,7 @@ from src.models.documents import Document
 
 class S3Service:
     def __init__(self):
+        self.logger = get_logger(__name__)
         # Disable SSL warnings for local development
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         
@@ -133,11 +136,22 @@ class S3Service:
     async def process_single_file(self, file_id: str, session: Session):
         """Process a specific file by its ID"""
         try:
-            # Get file details from S3
-            obj = self.s3_client.head_object(
-                Bucket=os.getenv('SOURCE_BUCKET'),
-                Key=file_id
-            )
+            log_s3_operation(self.logger, "head_object", {"file_id": file_id})
+            
+            try:
+                obj = self.s3_client.head_object(
+                    Bucket=os.getenv('SOURCE_BUCKET'),
+                    Key=file_id
+                )
+            except ClientError as e:
+                if e.response['Error']['Code'] == '404':
+                    log_api_error(self.logger, e, {
+                        "file_id": file_id,
+                        "bucket": os.getenv('SOURCE_BUCKET'),
+                        "operation": "head_object"
+                    })
+                    raise Exception(f"File {file_id} not found in bucket {os.getenv('SOURCE_BUCKET')}")
+                raise
             
             # Check if already processed
             doc = session.query(Document).filter_by(
