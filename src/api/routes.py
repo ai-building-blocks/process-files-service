@@ -92,27 +92,76 @@ async def get_file(file_id: str, source: str, db: Session = Depends(get_db)):
     else:
         return await s3_service.get_processed_file(file_id, db)
 
-@router.post("/files/{file_id}/process", response_model=ProcessingResponse)
-async def process_file(file_id: str, db: Session = Depends(get_db)):
-    """Process a specific file by ID"""
+class ProcessFileRequest(BaseModel):
+    """Request model for file processing"""
+    identifier_type: str = "id"  # Either "id" or "filename"
+
+    @validator('identifier_type')
+    def validate_identifier_type(cls, v):
+        if v not in ["id", "filename"]:
+            raise ValueError('identifier_type must be either "id" or "filename"')
+        return v
+
+@router.post("/files/{identifier}/process", response_model=ProcessingResponse)
+async def process_file(
+    identifier: str,
+    request: ProcessFileRequest = ProcessFileRequest(),
+    db: Session = Depends(get_db)
+):
+    """
+    Process a specific file by ID or filename
+    
+    Args:
+        identifier: Either a ULID (if identifier_type="id") or the original filename
+        request: Optional request body specifying identifier_type ("id" or "filename")
+        
+    Returns:
+        ProcessingResponse with status and message
+        
+    Raises:
+        404: File not found
+        403: Permission denied
+        500: Internal server error
+    """
     try:
-        # Add source prefix to file_id for S3 operations
-        prefixed_file_id = f"{s3_service.source_prefix}{file_id}"
-        result = await s3_service.process_single_file(prefixed_file_id, db)
-        return {"status": "success", "message": f"File {file_id} processed successfully"}
+        if request.identifier_type == "filename":
+            # If identifier is filename, add source prefix
+            file_path = f"{s3_service.source_prefix}{identifier}"
+        else:
+            # Look up original filename from database using ID
+            doc = db.query(Document).filter_by(id=identifier).first()
+            if not doc:
+                raise FileNotFoundError(f"No file found with ID {identifier}")
+            file_path = doc.original_filename
+
+        result = await s3_service.process_single_file(file_path, db)
+        return {
+            "status": "success", 
+            "message": f"File processed successfully (identifier: {identifier})"
+        }
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except FileNotFoundError as e:
-        log_api_error(logger, e, {"file_id": file_id, "operation": "process_file"})
+        log_api_error(logger, e, {
+            "identifier": identifier,
+            "identifier_type": request.identifier_type,
+            "operation": "process_file"
+        })
         raise HTTPException(status_code=404, detail=str(e))
     except PermissionError as e:
-        log_api_error(logger, e, {"file_id": file_id, "operation": "process_file"})
+        log_api_error(logger, e, {
+            "identifier": identifier,
+            "identifier_type": request.identifier_type,
+            "operation": "process_file"
+        })
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
-        log_api_error(logger, e, {"file_id": file_id, "operation": "process_file"})
+        log_api_error(logger, e, {
+            "identifier": identifier,
+            "identifier_type": request.identifier_type,
+            "operation": "process_file"
+        })
         raise HTTPException(
             status_code=500,
-            detail=f"Internal error processing file '{file_id}'. Please contact support if the issue persists."
+            detail=f"Internal error processing file. Please contact support if the issue persists."
         )
 
 @router.post("/process", response_model=ProcessingResponse)
