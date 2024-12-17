@@ -321,10 +321,10 @@ class S3Service:
                 )
                 
                 if response.status_code == 200:
-                content = response.json()['markdown_content']
-                file_id = str(ulid.new())
-                
-                # Save locally
+                    content = response.json()['markdown_content']
+                    file_id = str(ulid.new())
+                    
+                    # Save locally
                 os.makedirs('data/processed', exist_ok=True)
                 with open(f'data/processed/{file_id}.md', 'w') as f:
                     f.write(content)
