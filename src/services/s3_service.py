@@ -31,8 +31,8 @@ class S3Service:
             raise ValueError("S3_ACCESS_KEY and S3_SECRET_KEY environment variables are required")
             
         # Ensure endpoint includes API port for MinIO (typically :9000)
-        if ':' not in endpoint_url:
-            endpoint_url = f"{endpoint_url}:9000"
+        if ':' not in self.endpoint_url:
+            self.endpoint_url = f"{self.endpoint_url}:9000"
             
         config = Config(
             s3={'addressing_style': 'path' if os.getenv('S3_USE_PATH_STYLE', 'true').lower() == 'true' else 'auto'},
@@ -42,7 +42,7 @@ class S3Service:
             
         self.s3_client = boto3.client(
             's3',
-            endpoint_url=endpoint_url,
+            endpoint_url=self.endpoint_url,
             aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
             aws_secret_access_key=os.getenv('S3_SECRET_KEY'),
             config=config,
