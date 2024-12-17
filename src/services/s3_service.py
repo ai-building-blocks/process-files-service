@@ -248,12 +248,8 @@ class S3Service:
                 # Store metadata for later use
                 file_metadata = {
                     "Key": file_id,
-                    "LastModified": last_modified
-                }
-                
-                # Prepare file for processing
-                files = {
-                    'file': (file_id, io.BytesIO(content), 'application/pdf')
+                    "LastModified": last_modified,
+                    "Content": content  # Store the content to avoid re-downloading
                 }
                 
             except ClientError as e:
@@ -307,13 +303,12 @@ class S3Service:
     
     async def _process_file(self, obj, session: Session):
         try:
-            # Get the object once
-            response = self.s3_client.get_object(
-                Bucket=self.source_bucket,
-                Key=obj['Key']
-            )
-            content = response['Body'].read()
-            
+            # Use the content we already downloaded
+            content = obj.get('Content')
+            if not content:
+                self.logger.error(f"No content provided for file {obj['Key']}")
+                raise ValueError("File content not provided")
+                
             with tempfile.NamedTemporaryFile() as tmp:
                 # Write the content we already have to temp file
                 tmp.write(content)
