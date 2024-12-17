@@ -90,9 +90,11 @@ class S3Service:
                     if doc:
                         status = "processed"
                 
+                # Remove source prefix from filename
+                filename = obj['Key'].replace(self.source_prefix, '', 1)
                 files.append({
                     "id": str(ulid.new()),
-                    "filename": obj['Key'],
+                    "filename": filename,
                     "status": status
                 })
             return files
