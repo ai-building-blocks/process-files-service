@@ -48,6 +48,22 @@ class S3Service:
             config=config,
             verify=os.getenv('S3_VERIFY_SSL', 'true').lower() == 'true'
         )
+        
+        # Validate bucket access
+        try:
+            self.s3_client.head_bucket(Bucket=self.source_bucket)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == '403':
+                raise PermissionError(
+                    f"Access denied to bucket '{self.source_bucket}'. "
+                    "Please verify S3 credentials and bucket permissions."
+                )
+            elif error_code == '404':
+                raise ValueError(f"Bucket '{self.source_bucket}' does not exist")
+            else:
+                raise
+                
         # Get prefixes from environment with validation
         self.source_prefix = self._validate_prefix(os.getenv('SOURCE_PREFIX', 'downloads/'))
         self.destination_prefix = self._validate_prefix(os.getenv('DESTINATION_PREFIX', 'processed/'))
