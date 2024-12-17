@@ -100,12 +100,12 @@
 
 ## Deployment
 - [x] Add .env support
-- [ ] Create Docker setup:
-  - [ ] Create Dockerfile
-  - [ ] Create docker-compose.yml
-  - [ ] Add container health checks
-  - [ ] Optimize container size
-- [ ] Add deployment documentation
+- [x] Create Docker setup:
+  - [x] Create Dockerfile with multi-stage build
+  - [x] Create docker-compose.yml with API and worker services
+  - [x] Add container health checks
+  - [x] Optimize container size using multi-stage builds
+- [x] Add deployment documentation
 - [ ] Create backup/restore procedures
 
 ## Security
