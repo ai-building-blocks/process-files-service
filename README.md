@@ -26,6 +26,7 @@ S3_SECRET_KEY=your_secret_key
 SOURCE_BUCKET=source-docs
 DESTINATION_BUCKET=processed-docs
 S3_USE_PATH_STYLE=true  # Required for MinIO/path-style S3 endpoints
+S3_VERIFY_SSL=false     # Disable SSL verification for local development
 
 # Create required buckets in MinIO:
 mc alias set myminio http://localhost:9000 your_access_key your_secret_key

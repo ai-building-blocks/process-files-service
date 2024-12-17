@@ -34,7 +34,7 @@ class S3Service:
             aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
             aws_secret_access_key=os.getenv('S3_SECRET_KEY'),
             config=config,
-            verify=False  # For local MinIO instances
+            verify=os.getenv('S3_VERIFY_SSL', 'true').lower() == 'true'
         )
         # Get prefixes from environment with validation
         self.source_prefix = self._validate_prefix(os.getenv('SOURCE_PREFIX', 'downloads/'))
