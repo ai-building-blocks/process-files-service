@@ -96,7 +96,9 @@ async def get_file(file_id: str, source: str, db: Session = Depends(get_db)):
 async def process_file(file_id: str, db: Session = Depends(get_db)):
     """Process a specific file by ID"""
     try:
-        result = await s3_service.process_single_file(file_id, db)
+        # Add source prefix to file_id for S3 operations
+        prefixed_file_id = f"{s3_service.source_prefix}{file_id}"
+        result = await s3_service.process_single_file(prefixed_file_id, db)
         return {"status": "success", "message": f"File {file_id} processed successfully"}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
