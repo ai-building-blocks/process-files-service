@@ -146,6 +146,32 @@ class S3Service:
         except Exception as e:
             raise Exception(f"Error listing bucket files: {str(e)}")
 
+    async def get_files_status(self, session: Session) -> Dict[str, str]:
+        """Get processing status for all files in the system"""
+        try:
+            # Get all documents from database
+            docs = session.query(Document).all()
+            
+            # Build status dictionary
+            status = {}
+            for doc in docs:
+                status[doc.original_filename] = "processed"
+                
+            # Check source bucket for unprocessed files
+            response = self.s3_client.list_objects_v2(
+                Bucket=self.source_bucket,
+                Prefix=self.source_prefix
+            )
+            
+            for obj in response.get('Contents', []):
+                if obj['Key'] not in status:
+                    status[obj['Key']] = "unprocessed"
+                    
+            return status
+        except Exception as e:
+            self.logger.error(f"Error getting files status: {str(e)}")
+            raise
+            
     async def list_processed_files(self, session: Session, since: str = None):
         """List processed files with their status"""
         try:

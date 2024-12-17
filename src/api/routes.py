@@ -79,7 +79,16 @@ async def list_files(
 @router.get("/status", response_model=Dict[str, str])
 async def get_files_status(db: Session = Depends(get_db)):
     """Get processing status for all files"""
-    return await s3_service.get_files_status(db)
+    try:
+        return await s3_service.get_files_status(db)
+    except Exception as e:
+        log_api_error(logger, e, {
+            "operation": "get_files_status"
+        })
+        raise HTTPException(
+            status_code=500,
+            detail="Error retrieving file status. Please try again later."
+        )
 
 @router.get("/files/{file_id}", response_model=FileResponse)
 async def get_file(file_id: str, source: str, db: Session = Depends(get_db)):
