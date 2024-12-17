@@ -46,12 +46,12 @@ A robust service for pre-processing documents stored in S3/MinIO buckets, specif
 
 6. Start the service:
    ```bash
-   python -m uvicorn src.main:app --reload
+   .venv/bin/python -m uvicorn src.main:app --reload
    ```
 
 7. Start the worker (in a separate terminal):
    ```bash
-   python src/worker.py
+   .venv/bin/python src/worker.py
    ```
 
 Note: Always ensure you're in the virtual environment (step 3) before running any commands. You'll know you're in the virtual environment when you see (.venv) at the start of your terminal prompt.
