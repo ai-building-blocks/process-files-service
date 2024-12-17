@@ -1,4 +1,5 @@
 import boto3
+import io
 import urllib3
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -239,9 +240,16 @@ class S3Service:
                     Key=file_id
                 )
                 
-                # Read the content
+                # Read the content and metadata
                 content = response['Body'].read()
+                last_modified = response['LastModified']
                 self.logger.info(f"Successfully downloaded file {file_id}, size: {len(content)} bytes")
+                
+                # Store metadata for later use
+                file_metadata = {
+                    "Key": file_id,
+                    "LastModified": last_modified
+                }
                 
                 # Prepare file for processing
                 files = {
@@ -285,11 +293,11 @@ class S3Service:
                 original_filename=file_id
             ).order_by(Document.created_at.desc()).first()
             
-            if doc and doc.s3_last_modified >= obj['LastModified']:
+            if doc and doc.s3_last_modified >= file_metadata['LastModified']:
                 return {"status": "skipped", "message": "File already processed"}
             
             # Process the file
-            await self._process_file({"Key": file_id, "LastModified": obj['LastModified']}, session)
+            await self._process_file(file_metadata, session)
             return {"status": "success", "message": "File processed successfully"}
             
         except self.s3_client.exceptions.NoSuchKey:
