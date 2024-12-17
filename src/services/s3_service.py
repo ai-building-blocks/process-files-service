@@ -9,6 +9,7 @@ import requests
 import ulid
 from datetime import datetime
 from sqlalchemy.orm import Session
+from typing import Dict
 from src.models.documents import Document
 
 class S3Service:
