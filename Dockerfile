@@ -15,15 +15,17 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
 # Set working directory
 WORKDIR /app
 
-# Copy project files
+# Copy only dependency files first
 COPY pyproject.toml .
-COPY src/ src/
 
 # Create venv and install dependencies
 ENV PATH="/root/.local/bin:$PATH"
 RUN uv venv && \
     . .venv/bin/activate && \
     uv pip install .
+
+# Copy source code after installing dependencies
+COPY src/ src/
 
 # Runtime stage
 FROM python:3.11-slim
