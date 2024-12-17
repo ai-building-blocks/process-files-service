@@ -15,9 +15,14 @@ class S3Service:
             aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
             aws_secret_access_key=os.getenv('S3_SECRET_KEY')
         )
+        self.source_prefix = os.getenv('SOURCE_PREFIX', 'downloads/')
+        self.destination_prefix = os.getenv('DESTINATION_PREFIX', 'processed/')
         
     async def process_new_files(self, session: Session):
-        objects = self.s3_client.list_objects_v2(Bucket=os.getenv('SOURCE_BUCKET'))
+        objects = self.s3_client.list_objects_v2(
+            Bucket=os.getenv('SOURCE_BUCKET'),
+            Prefix=self.source_prefix
+        )
         
         for obj in objects.get('Contents', []):
             doc = session.query(Document).filter_by(
@@ -50,13 +55,13 @@ class S3Service:
                 with open(f'data/processed/{file_id}.md', 'w') as f:
                     f.write(content)
                 
-                # Save to destination bucket if configured
-                if os.getenv('DESTINATION_BUCKET'):
-                    self.s3_client.put_object(
-                        Bucket=os.getenv('DESTINATION_BUCKET'),
-                        Key=f'{file_id}.md',
-                        Body=content
-                    )
+                # Save to destination folder
+                destination_key = f"{self.destination_prefix}{file_id}.md"
+                self.s3_client.put_object(
+                    Bucket=os.getenv('SOURCE_BUCKET'),
+                    Key=destination_key,
+                    Body=content
+                )
                 
                 # Update database
                 doc = Document(

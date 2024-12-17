@@ -8,14 +8,21 @@ router = APIRouter()
 s3_service = S3Service()
 
 @router.get("/files")
-async def list_files(source: str, session: Session = SessionLocal()):
+async def list_files(source: str = "bucket", session: Session = SessionLocal()):
+    """
+    List files from either source folder or processed folder
+    source: 'bucket' for source folder, 'parsed' for processed folder
+    """
     if source not in ["bucket", "parsed"]:
         raise HTTPException(400, "Invalid source parameter")
     
-    if source == "bucket":
-        return await s3_service.list_files()
-    else:
-        return await s3_service.list_processed_files(session)
+    try:
+        if source == "bucket":
+            return await s3_service.list_files()
+        else:
+            return await s3_service.list_processed_files(session)
+    except Exception as e:
+        raise HTTPException(500, f"Error listing files: {str(e)}")
 
 @router.get("/files/{file_id}")
 async def get_file(file_id: str, source: str, session: Session = SessionLocal()):
