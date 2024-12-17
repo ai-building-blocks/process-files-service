@@ -10,16 +10,27 @@ from src.models.documents import Document
 
 class S3Service:
     def __init__(self):
+        endpoint_url = os.getenv('S3_ENDPOINT')
+        if not endpoint_url:
+            raise ValueError("S3_ENDPOINT environment variable is required")
+            
+        # Ensure endpoint includes API port for MinIO (typically :9000)
+        if ':' not in endpoint_url:
+            endpoint_url = f"{endpoint_url}:9000"
+            
         config = Config(
-            s3={'addressing_style': 'path' if os.getenv('S3_USE_PATH_STYLE', 'true').lower() == 'true' else 'auto'}
+            s3={'addressing_style': 'path' if os.getenv('S3_USE_PATH_STYLE', 'true').lower() == 'true' else 'auto'},
+            connect_timeout=5,
+            retries={'max_attempts': 3}
         )
             
         self.s3_client = boto3.client(
             's3',
-            endpoint_url=os.getenv('S3_ENDPOINT'),
+            endpoint_url=endpoint_url,
             aws_access_key_id=os.getenv('S3_ACCESS_KEY'),
             aws_secret_access_key=os.getenv('S3_SECRET_KEY'),
-            config=config
+            config=config,
+            verify=False  # For local MinIO instances
         )
         self.source_prefix = os.getenv('SOURCE_PREFIX', 'downloads/')
         self.destination_prefix = os.getenv('DESTINATION_PREFIX', 'processed/')
