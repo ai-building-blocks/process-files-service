@@ -92,8 +92,13 @@ class S3Service:
                 
                 # Remove source prefix from filename
                 filename = obj['Key'].replace(self.source_prefix, '', 1)
+                # Check if document exists in database
+                doc = session.query(Document).filter_by(
+                    original_filename=obj['Key']
+                ).first() if session else None
+                
                 files.append({
-                    "id": str(ulid.new()),
+                    "id": doc.id if doc else str(ulid.new()),
                     "filename": filename,
                     "status": status
                 })
