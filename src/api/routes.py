@@ -105,9 +105,15 @@ class ProcessFileRequest(BaseModel):
 @router.post("/files/{identifier}/process", response_model=ProcessingResponse)
 async def process_file(
     identifier: str,
-    request: ProcessFileRequest = ProcessFileRequest(),
+    request: ProcessFileRequest = None,
     db: Session = Depends(get_db)
 ):
+    # Auto-detect identifier type if not specified
+    if request is None:
+        request = ProcessFileRequest()
+        # If identifier contains file extension, assume it's a filename
+        if '.' in identifier:
+            request.identifier_type = "filename"
     """
     Process a specific file by ID or filename
     
