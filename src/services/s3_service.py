@@ -338,7 +338,7 @@ class S3Service:
         
         try:
             # Update status to downloading
-            doc.status = 'downloading'
+            doc.status = 'queued'
             session.commit()
             
             log_s3_operation(self.logger, "get_object", {"file_id": file_id})

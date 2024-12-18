@@ -64,8 +64,13 @@ if __name__ == "__main__":
             if doc.status != "queued":
                 return {"status": "error", "message": f"Invalid document state: {doc.status}. Expected: queued"}
                 
-            # Update status to processing
-            doc.status = "processing"
+            # Update status to downloaded first
+            doc.status = "downloaded"
+            doc.downloaded_at = datetime.utcnow()
+            session.commit()
+
+            # Then update to processing
+            doc.status = "processing" 
             doc.processing_started_at = datetime.utcnow()
             session.commit()
             
@@ -93,7 +98,11 @@ if __name__ == "__main__":
                     
                 await s3_service.process_single_file(file_path, session)
                 
-                # Update status to completed
+                # Update status to uploaded first
+                doc.status = "uploaded"
+                session.commit()
+                
+                # Then mark as completed
                 doc.status = "completed"
                 doc.processing_completed_at = datetime.utcnow()
                 session.commit()
