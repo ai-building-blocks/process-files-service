@@ -86,6 +86,21 @@ async def list_files(
     except Exception as e:
         raise HTTPException(500, f"Error listing files: {str(e)}")
 
+@router.get("/files/{process_id}/status", response_model=ProcessingResponse)
+async def get_processing_status(
+    process_id: str,
+    db: Session = Depends(get_db)
+):
+    """Get status of a specific processing job"""
+    doc = db.query(Document).filter_by(id=process_id).first()
+    if not doc:
+        raise HTTPException(404, "Processing job not found")
+        
+    return {
+        "status": doc.status,
+        "message": doc.error_message if doc.status == "failed" else f"Processing status: {doc.status}"
+    }
+
 @router.get("/status", response_model=Dict[str, str])
 async def get_files_status(db: Session = Depends(get_db)):
     """Get processing status for all files"""
@@ -127,42 +142,54 @@ async def process_file(
     request: ProcessFileRequest = None,
     db: Session = Depends(get_db)
 ):
-    # Auto-detect identifier type if not specified
-    if request is None:
-        request = ProcessFileRequest()
-        # If identifier contains file extension, assume it's a filename
-        if '.' in identifier:
-            request.identifier_type = "filename"
-    """
-    Process a specific file by ID or filename
+    """Process a specific file asynchronously"""
+    # Generate new ULID for tracking
+    process_id = str(ulid.new())
     
-    Args:
-        identifier: Either a ULID (if identifier_type="id") or the original filename
-        request: Optional request body specifying identifier_type ("id" or "filename")
-        
-    Returns:
-        ProcessingResponse with status and message
-        
-    Raises:
-        404: File not found
-        403: Permission denied
-        500: Internal server error
-    """
     try:
-        if request.identifier_type == "filename":
-            # If identifier is filename, add source prefix
-            file_path = f"{s3_service.source_prefix}{identifier}"
-        else:
-            # Look up original filename from database using ID
-            doc = db.query(Document).filter_by(id=identifier).first()
-            if not doc:
-                raise FileNotFoundError(f"No file found with ID {identifier}")
-            file_path = doc.original_filename
+        if request is None:
+            request = ProcessFileRequest()
+            if '.' in identifier:
+                request.identifier_type = "filename"
 
-        result = await s3_service.process_single_file(file_path, db)
+        # Create document record immediately
+        doc = Document(
+            id=process_id,
+            original_filename=identifier if request.identifier_type == "filename" else None,
+            processed_filename="",
+            version="1.0",
+            status="queued",
+            created_at=datetime.utcnow()
+        )
+        db.add(doc)
+        db.commit()
+
+        # Trigger processing in background
+        worker_url = os.getenv("WORKER_URL", "http://worker:8081")
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    f"{worker_url}/files/process",
+                    json={
+                        "process_id": process_id,
+                        "identifier": identifier,
+                        "identifier_type": request.identifier_type
+                    },
+                    timeout=30.0
+                )
+        except Exception as e:
+            logger.error(f"Failed to queue processing: {str(e)}")
+            doc.status = "failed"
+            doc.error_message = "Failed to queue processing"
+            db.commit()
+            raise HTTPException(
+                status_code=503,
+                detail="Processing service unavailable"
+            )
+
         return {
-            "status": "success", 
-            "message": f"File processed successfully (identifier: {identifier})"
+            "status": "accepted",
+            "message": f"Processing queued with ID: {process_id}"
         }
     except FileNotFoundError as e:
         log_api_error(logger, e, {
