@@ -46,7 +46,7 @@ while true; do
             echo "Error: $MESSAGE"
             exit 1
             ;;
-        "pending"|"downloading"|"processing")
+        "queued"|"pending"|"downloading"|"processing")
             echo "Still processing..."
             sleep 5
             ;;
