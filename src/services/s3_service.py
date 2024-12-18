@@ -337,8 +337,8 @@ class S3Service:
         session.commit()
         
         try:
-            # Update status to downloading
-            doc.status = 'queued'
+            # Update status to downloading before S3 operation
+            doc.status = 'downloading'
             session.commit()
             
             log_s3_operation(self.logger, "get_object", {"file_id": file_id})
@@ -353,8 +353,8 @@ class S3Service:
                 last_modified = response['LastModified']
                 self.logger.info(f"Successfully downloaded file {file_id}, size: {len(content)} bytes")
                 
-                # Update status after successful download
-                doc.status = 'downloaded'
+                # Update status to processing after successful download
+                doc.status = 'processing'
                 doc.downloaded_at = datetime.utcnow()
                 doc.s3_last_modified = last_modified.replace(tzinfo=None)
                 session.commit()
@@ -371,13 +371,13 @@ class S3Service:
                 session.commit()
                 self._handle_s3_client_error(e, file_id)
             
-            # Update status to processing
-            doc.status = 'processing'
-            doc.processing_started_at = datetime.utcnow()
-            session.commit()
-            
             # Process the file synchronously since S3 operations are blocking
             self._process_file(file_metadata, session, doc)
+            
+            # Update status to completed after successful processing
+            doc.status = 'completed'
+            doc.processing_completed_at = datetime.utcnow()
+            session.commit()
             
         except Exception as e:
             self.logger.error(f"Error processing file {file_id}: {str(e)}")

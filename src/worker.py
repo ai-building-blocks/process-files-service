@@ -64,13 +64,12 @@ if __name__ == "__main__":
             if doc.status != "queued":
                 return {"status": "error", "message": f"Invalid document state: {doc.status}. Expected: queued"}
                 
-            # Update status to downloaded first
-            doc.status = "downloaded"
-            doc.downloaded_at = datetime.utcnow()
+            # Update status to downloading first
+            doc.status = "downloading"
             session.commit()
-
-            # Then update to processing
-            doc.status = "processing" 
+            
+            # After successful download, update to processing
+            doc.status = "processing"
             doc.processing_started_at = datetime.utcnow()
             session.commit()
             
