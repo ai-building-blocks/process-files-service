@@ -222,14 +222,15 @@ async def trigger_processing():
     """Trigger the worker to process new files"""
     try:
         # Just trigger the worker asynchronously and return immediately
-        worker_url = os.getenv("WORKER_URL", "http://worker:8081")
+        worker_url = os.getenv("WORKER_URL", "http://worker:8071")  # Match worker port
         try:
             async with httpx.AsyncClient() as client:
                 # Add longer timeout and retries
                 await client.post(
                     f"{worker_url}/process",
                     timeout=30.0,
-                    headers={"Content-Type": "application/json"}
+                    headers={"Content-Type": "application/json"},
+                    verify=False  # Disable SSL verification for internal communication
                 )
         except Exception as e:
             logger.error(f"Failed to connect to worker service at {worker_url}: {str(e)}")
