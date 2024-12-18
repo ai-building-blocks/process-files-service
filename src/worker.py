@@ -104,9 +104,13 @@ if __name__ == "__main__":
             "host": "0.0.0.0"
         }
     
+    # Get worker port from environment with validation
+    worker_port = int(os.getenv("WORKER_PORT", "8071"))
+    print(f"Starting worker service on port {worker_port}")  # Debug log
+    
     uvicorn.run(
         app, 
         host="0.0.0.0",  # Always bind to all interfaces in container
-        port=int(os.getenv("WORKER_PORT", 8071)),  # Default to match .env.template
+        port=worker_port,
         log_level="info"
     )
