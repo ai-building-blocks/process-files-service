@@ -391,15 +391,15 @@ class S3Service:
                 Body=content
             )
                 
-                # Update status to completed after successful upload
-                doc.status = 'completed'
-                doc.processing_completed_at = datetime.utcnow()
-                session.commit()
-            except Exception as upload_error:
-                doc.status = 'failed'
-                doc.error_message = f"Upload failed: {str(upload_error)}"
-                session.commit()
-                raise
+            # Update status to completed after successful upload
+            doc.status = 'completed'
+            doc.processing_completed_at = datetime.utcnow()
+            session.commit()
+        except Exception as upload_error:
+            doc.status = 'failed'
+            doc.error_message = f"Upload failed: {str(upload_error)}"
+            session.commit()
+            raise
             
         except Exception as e:
             self.logger.error(f"Error processing file {file_id}: {str(e)}")
