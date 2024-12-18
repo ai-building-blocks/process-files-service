@@ -285,8 +285,8 @@ class S3Service:
                 
         return results
 
-    def process_single_file(self, file_id: str, session: Session) -> None:
-        """Process a specific file by its ID in background
+    async def process_single_file(self, file_id: str, session: Session) -> None:
+        """Process a specific file by its ID
         
         Args:
             file_id: Full path (including prefix) of file to process
@@ -299,7 +299,6 @@ class S3Service:
             ValueError: If file_id is invalid
             
         Side Effects:
-            - Creates/updates document record in database
             - Downloads file to temp directory
             - Processes file through conversion service
             - Updates document status throughout processing
@@ -316,94 +315,42 @@ class S3Service:
             if error_code in ['403', '404']:
                 self._handle_s3_client_error(e, file_id)
             raise
-
-        # Strip prefix for database storage
-        clean_filename = file_id.replace(self.source_prefix, '', 1)
         
-        # Check if document already exists
-        doc = session.query(Document).filter_by(original_filename=clean_filename).first()
-        if not doc:
-            # Create initial document record with s3_last_modified
-            doc = Document(
-                id=str(ulid.new()),
-                original_filename=clean_filename,  # Store without prefix
-                processed_filename='',
-                version='1.0',
-                status='pending',
-                created_at=datetime.utcnow(),
-                s3_last_modified=last_modified.replace(tzinfo=None)  # Remove timezone for SQLite
-            )
-        session.add(doc)
-        session.commit()
+        # Download file
+        log_s3_operation(self.logger, "get_object", {"file_id": file_id})
         
         try:
-            # Update status to downloading before S3 operation
-            doc.status = 'downloading'
-            session.commit()
+            response = self.s3_client.get_object(
+                Bucket=self.source_bucket,
+                Key=file_id
+            )
             
-            log_s3_operation(self.logger, "get_object", {"file_id": file_id})
+            content = response['Body'].read()
+            last_modified = response['LastModified']
+            self.logger.info(f"Successfully downloaded file {file_id}, size: {len(content)} bytes")
             
-            try:
-                response = self.s3_client.get_object(
-                    Bucket=self.source_bucket,
-                    Key=file_id
-                )
-                
-                content = response['Body'].read()
-                last_modified = response['LastModified']
-                self.logger.info(f"Successfully downloaded file {file_id}, size: {len(content)} bytes")
-                
-                # Update status to processing after successful download
-                doc.status = 'processing'
-                doc.downloaded_at = datetime.utcnow()
-                doc.s3_last_modified = last_modified.replace(tzinfo=None)
-                session.commit()
-                
-                file_metadata = {
-                    "Key": file_id,
-                    "LastModified": last_modified,
-                    "Content": content
-                }
-                
-            except ClientError as e:
-                doc.status = 'failed'
-                doc.error_message = str(e)
-                session.commit()
-                self._handle_s3_client_error(e, file_id)
+            file_metadata = {
+                "Key": file_id,
+                "LastModified": last_modified,
+                "Content": content
+            }
             
-            # Update status to processing before conversion
-            doc.status = 'processing'
-            doc.processing_started_at = datetime.utcnow()
-            session.commit()
+        except ClientError as e:
+            self._handle_s3_client_error(e, file_id)
             
-            # Process the file synchronously since S3 operations are blocking
-            self._process_file(file_metadata, session, doc)
-            
-            # Update status to uploading before S3 upload
-            doc.status = 'uploading'
-            session.commit()
-            
-            # Upload to S3
-            destination_key = f"{self.destination_prefix}{doc.processed_filename}"
+        # Process the file synchronously since S3 operations are blocking
+        await self._process_file(file_metadata, session)
+        
+        # Upload processed file
+        try:
+            destination_key = f"{self.destination_prefix}{os.path.basename(file_id)}"
             self.s3_client.put_object(
                 Bucket=self.source_bucket,
                 Key=destination_key,
                 Body=content
             )
-                
-            # Update status to completed after successful upload
-            doc.status = 'completed'
-            doc.processing_completed_at = datetime.utcnow()
-            session.commit()
         except Exception as upload_error:
-            doc.status = 'failed'
-            doc.error_message = f"Upload failed: {str(upload_error)}"
-            session.commit()
-            raise
-            
-        except Exception as e:
-            self.logger.error(f"Error processing file {file_id}: {str(e)}")
-            raise
+            raise Exception(f"Upload failed: {str(upload_error)}")
 
     def _handle_s3_client_error(self, error: ClientError, file_id: str) -> None:
         """Handle S3 client errors with appropriate logging and exceptions
