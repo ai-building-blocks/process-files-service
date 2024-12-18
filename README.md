@@ -485,3 +485,13 @@ MIT
 - Documentation: See `/docs` endpoint when running
 - Integration Support: See architecture documentation in `/docs/architecture.md`
 - Pipeline Configuration: Review `/docs/pipeline-setup.md` for RAG integration details
+
+## Current Status
+
+See [todo.md](todo.md) for current development tasks and [journal.md](journal.md) for detailed progress.
+
+Known Limitations:
+- Duplicate file processing needs optimization with change detection
+- State transitions need proper handling for edge cases
+- Last processed tracking needed for incremental processing
+- See todo.md for planned improvements

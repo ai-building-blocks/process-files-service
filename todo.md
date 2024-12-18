@@ -50,6 +50,9 @@
 - [ ] Add file content validation
 - [ ] Implement file size limits
 - [ ] Add support for file compression
+- [ ] Add file change detection based on S3 metadata
+- [ ] Implement proper state transition handling
+- [ ] Add last processed timestamp tracking
 
 ## State Management
 - [x] Basic SQLite integration
