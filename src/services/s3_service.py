@@ -390,19 +390,28 @@ class S3Service:
             with open(processed_filepath, 'w') as f:
                 f.write(content)
             
-            # Save to destination folder
-            destination_key = f"{self.destination_prefix}{processed_filename}"
-            self.s3_client.put_object(
-                Bucket=self.source_bucket,
-                Key=destination_key,
-                Body=content
-            )
-            
-            # Update document status
-            doc.processed_filename = processed_filename
-            doc.status = 'completed'
-            doc.processing_completed_at = datetime.utcnow()
-            session.commit()
+            # Try to save to destination folder
+            try:
+                destination_key = f"{self.destination_prefix}{processed_filename}"
+                self.s3_client.put_object(
+                    Bucket=self.source_bucket,
+                    Key=destination_key,
+                    Body=content
+                )
+                
+                # Update document status on successful upload
+                doc.processed_filename = processed_filename
+                doc.status = 'completed'
+                doc.processing_completed_at = datetime.utcnow()
+                session.commit()
+                
+            except Exception as upload_error:
+                self.logger.error(f"Failed to upload processed file to S3: {str(upload_error)}")
+                doc.status = 'upload_failed'
+                doc.error_message = f"Failed to upload to S3: {str(upload_error)}"
+                doc.processing_completed_at = datetime.utcnow()
+                session.commit()
+                raise  # Re-raise to trigger outer exception handling
             
         except Exception as e:
             if doc:
