@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from ..utils.logging import get_logger, log_api_error
 import httpx
 from sqlalchemy.orm import Session
@@ -124,6 +124,7 @@ class ProcessFileRequest(BaseModel):
 @router.post("/files/{identifier}/process", response_model=ProcessingResponse)
 async def process_file(
     identifier: str,
+    background_tasks: BackgroundTasks,
     request: ProcessFileRequest = None,
     db: Session = Depends(get_db)
 ):
