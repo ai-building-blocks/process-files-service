@@ -100,17 +100,22 @@ if __name__ == "__main__":
         """Health check endpoint with debug info"""
         return {
             "status": "healthy",
-            "worker_port": os.getenv("WORKER_PORT", 8081),
+            "worker_url": os.getenv("WORKER_URL", "http://worker:8071"),
             "host": "0.0.0.0"
         }
     
-    # Get worker port from environment with validation
-    worker_port = int(os.getenv("WORKER_PORT", "8071"))
-    print(f"Starting worker service on port {worker_port}")  # Debug log
+    # Get port from WORKER_URL or use default
+    worker_url = os.getenv("WORKER_URL", "http://worker:8071")
+    try:
+        port = int(worker_url.split(":")[-1])
+    except (ValueError, IndexError):
+        port = 8071
+        
+    print(f"Starting worker service on port {port}")  # Debug log
     
     uvicorn.run(
         app, 
         host="0.0.0.0",  # Always bind to all interfaces in container
-        port=worker_port,
+        port=port,
         log_level="info"
     )
