@@ -257,5 +257,5 @@ MIT
 
 ## Support
 
-- GitHub Issues: [Report a bug](https://github.com/yourusername/s3-document-processor/issues)
+- GitHub Issues: [Report a bug](https://github.com/ai-building-blocks/process-files-service/issues)
 - Documentation: See `/docs` endpoint when running

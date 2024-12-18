@@ -7,7 +7,7 @@
 - [x] Set up pyproject.toml for dependency management
 - [x] Set up Docker multi-stage builds
 - [ ] Add LICENSE file (suggest MIT)
-- [ ] Update README with correct GitHub repository links
+- [x] Update README with correct GitHub repository links
 - [ ] Add pre-commit hooks for code formatting
 
 ## CI/CD
