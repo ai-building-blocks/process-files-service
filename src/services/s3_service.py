@@ -193,9 +193,10 @@ class S3Service:
         filename = obj['Key'].replace(self.source_prefix, '', 1)
         doc = None
         if session:
-            # Always use full path (including prefix) for database queries
+            # Strip prefix for database queries
+            clean_filename = obj['Key'].replace(self.source_prefix, '', 1)
             doc = session.query(Document).filter_by(
-                original_filename=obj['Key']
+                original_filename=clean_filename
             ).first()
             
         status = "unprocessed"
@@ -316,13 +317,16 @@ class S3Service:
                 self._handle_s3_client_error(e, file_id)
             raise
 
-        # Check if document already exists with full path
-        doc = session.query(Document).filter_by(original_filename=file_id).first()
+        # Strip prefix for database storage
+        clean_filename = file_id.replace(self.source_prefix, '', 1)
+        
+        # Check if document already exists
+        doc = session.query(Document).filter_by(original_filename=clean_filename).first()
         if not doc:
             # Create initial document record with s3_last_modified
             doc = Document(
                 id=str(ulid.new()),
-                original_filename=file_id,  # Store full path including prefix
+                original_filename=clean_filename,  # Store without prefix
                 processed_filename='',
                 version='1.0',
                 status='pending',
@@ -452,12 +456,15 @@ class S3Service:
             self.logger.error(f"No content provided for file {obj['Key']}")
             raise ValueError("File content not provided")
 
+        # Strip prefix for database storage
+        clean_filename = obj['Key'].replace(self.source_prefix, '', 1)
+        
         # Create or get document record
-        doc = session.query(Document).filter_by(original_filename=obj['Key']).first()
+        doc = session.query(Document).filter_by(original_filename=clean_filename).first()
         if not doc:
             doc = Document(
                 id=str(ulid.new()),
-                original_filename=obj['Key'],  # Store full path including prefix
+                original_filename=clean_filename,  # Store without prefix
                 processed_filename='',
                 version='1.0',
                 status='pending',

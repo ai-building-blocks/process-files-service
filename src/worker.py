@@ -67,14 +67,16 @@ if __name__ == "__main__":
             
             try:
                 if identifier_type == "filename":
-                    # Always use full path including prefix for consistency
-                    file_path = f"{s3_service.source_prefix}{identifier}" if not identifier.startswith(s3_service.source_prefix) else identifier
+                    # Strip prefix if present, then add it for S3 operations
+                    clean_filename = identifier.replace(s3_service.source_prefix, '', 1)
+                    file_path = f"{s3_service.source_prefix}{clean_filename}"
                 else:
                     # Look up original filename from database using ID
                     orig_doc = session.query(Document).filter_by(id=identifier).first()
                     if not orig_doc:
                         raise FileNotFoundError(f"No file found with ID {identifier}")
-                    file_path = orig_doc.original_filename
+                    # Add prefix for S3 operations
+                    file_path = f"{s3_service.source_prefix}{orig_doc.original_filename}"
                 
                 # Check if document already exists with full path
                 existing_doc = session.query(Document).filter_by(original_filename=file_path).first()
