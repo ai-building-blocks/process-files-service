@@ -55,10 +55,14 @@ if __name__ == "__main__":
             identifier = request["identifier"]
             identifier_type = request["identifier_type"]
             
-            # Get document record
+            # Get document record by ID
             doc = session.query(Document).filter_by(id=process_id).first()
             if not doc:
                 return {"status": "error", "message": "Invalid process ID"}
+            
+            # Verify document is in queued state
+            if doc.status != "queued":
+                return {"status": "error", "message": f"Invalid document state: {doc.status}. Expected: queued"}
                 
             # Update status to processing
             doc.status = "processing"

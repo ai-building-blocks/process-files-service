@@ -154,17 +154,29 @@ async def process_file(
             if '.' in identifier:
                 request.identifier_type = "filename"
 
-        # Create document record immediately
-        doc = Document(
-            id=process_id,
-            original_filename=identifier if request.identifier_type == "filename" else None,
-            processed_filename="",
-            version="1.0",
-            status="queued",
-            created_at=datetime.utcnow(),
-            s3_last_modified=datetime.utcnow()
-        )
-        db.add(doc)
+        # Create or update document record
+        if request.identifier_type == "filename":
+            # Check for existing document by filename
+            doc = db.query(Document).filter_by(original_filename=identifier).first()
+            if not doc:
+                doc = Document(
+                    id=process_id,
+                    original_filename=identifier,
+                    processed_filename="",
+                    version="1.0",
+                    status="queued",
+                    created_at=datetime.utcnow()
+                )
+                db.add(doc)
+        else:
+            # Look up by ID
+            doc = db.query(Document).filter_by(id=identifier).first()
+            if not doc:
+                raise HTTPException(status_code=404, detail=f"No document found with ID {identifier}")
+            # Update existing document status
+            doc.status = "queued"
+            
+        doc.s3_last_modified = datetime.utcnow()
         db.commit()
 
         # Add processing to background tasks
