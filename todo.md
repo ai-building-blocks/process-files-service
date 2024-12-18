@@ -51,8 +51,15 @@
 - [ ] Implement file size limits
 - [ ] Add support for file compression
 - [ ] Add file change detection based on S3 metadata
-- [ ] Implement proper state transition handling
-- [ ] Add last processed timestamp tracking
+- [ ] Fix state transition tracking:
+  - [ ] Track downloading state
+  - [ ] Track processing state
+  - [ ] Track uploading state
+  - [ ] Ensure state changes are persisted
+- [ ] Improve duplicate file handling:
+  - [ ] Add content hash comparison
+  - [ ] Return existing ULID for duplicates
+  - [ ] Allow reprocessing if content changed
 
 ## State Management
 - [x] Basic SQLite integration
