@@ -53,7 +53,7 @@ class S3Service:
             endpoint_url=self.endpoint_url,
             aws_access_key_id=self.access_key,
             aws_secret_access_key=self.secret_key,
-            region_name='us-east-1',
+            region_name='us-east-1',  # Required for MinIO
             config=config,
             verify=os.getenv('S3_VERIFY_SSL', 'true').lower() == 'true'
         )
