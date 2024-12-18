@@ -34,20 +34,20 @@ while true; do
     STATUS=$(echo "$STATUS_RESPONSE" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p')
     MESSAGE=$(echo "$STATUS_RESPONSE" | sed -n 's/.*"message":"\([^"]*\)".*/\1/p')
     
-    echo "Status: $STATUS"
+    echo "Current state: $STATUS"
     
     case $STATUS in
         "completed")
-            echo "Processing completed successfully"
+            echo "Current state: $STATUS - Processing completed successfully"
             exit 0
             ;;
         "failed")
-            echo "Processing failed"
-            echo "Error: $MESSAGE"
+            echo "Current state: $STATUS - Processing failed"
+            echo "Error message: $MESSAGE"
             exit 1
             ;;
         "queued"|"downloaded"|"processing"|"uploaded")
-            echo "Still processing..."
+            echo "Current state: $STATUS - Still processing..."
             sleep 5
             ;;
         *)
