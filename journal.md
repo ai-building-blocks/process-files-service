@@ -8,6 +8,19 @@
 ## Daily Progress
 
 ### December 17, 2024
+#### Early Morning Session
+- Troubleshooting S3 Connection
+  - Encountered issues with MinIO connection
+  - Files were visible but downloads failed with 403 errors
+  - Root cause: Missing region configuration
+  - Error logs showed:
+    ```
+    api-1 | 2024-12-17 11:09:05,867 - src.services.s3_service - INFO - S3 Operation: {'operation': 'head_object', 'timestamp': '2024-12-17T11:09:05.867881', 'file_id': 'downloads/zunaira-yousaf-202403271108.pdf'}
+    api-1 | 2024-12-17 11:09:05,910 - src.services.s3_service - ERROR - API Error: {'error_type': 'ClientError', 'error_message': 'An error occurred (403) when calling the HeadObject operation: Forbidden', 'timestamp': '2024-12-17T11:09:05.910362', 'context': {'file_id': 'downloads/zunaira-yousaf-202403271108.pdf', 'bucket': 'default', 'operation': 'head_object', 'error_code': '403', 'error_message': 'Forbidden'}}
+    ```
+  - Solution: Added region_name='us-east-1' to S3 client configuration
+  - Learning: MinIO requires region configuration even if not used
+
 #### Morning Session
 - Initial repository setup
   - Created FastAPI application structure
