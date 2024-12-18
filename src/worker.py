@@ -134,13 +134,13 @@ async def process_single_file(request: dict):
         session.close()
 
 @app.get("/health")
-    async def health_check():
-        """Health check endpoint with debug info"""
-        return {
-            "status": "healthy",
-            "worker_url": os.getenv("WORKER_URL", "http://worker:8071"),
-            "host": "0.0.0.0"
-        }
+async def health_check():
+    """Health check endpoint with debug info"""
+    return {
+        "status": "healthy",
+        "worker_url": os.getenv("WORKER_URL", "http://worker:8071"),
+        "host": "0.0.0.0"
+    }
     
     # Get port from WORKER_URL or use default
     worker_url = os.getenv("WORKER_URL", "http://worker:8071")
