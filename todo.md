@@ -99,11 +99,12 @@
 
 ## Monitoring
 - [x] Add health checks
-- [ ] Implement logging:
+- [x] Implement logging:
   - [x] Add structured logging
   - [ ] Add log rotation
   - [ ] Add log aggregation
   - [x] Add error context enrichment
+  - [x] Add configurable log levels
   - [ ] Add performance logging
   - [ ] Add audit logging for sensitive operations
 - [ ] Add Prometheus metrics
