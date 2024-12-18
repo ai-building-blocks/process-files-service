@@ -309,12 +309,25 @@ class S3Service:
         temp_filepath = os.path.join(self.temp_dir, temp_filename)
         
         try:
-            # Save the downloaded file and verify
+            # Log pre-save state
+            self.logger.debug(f"Attempting to save file to {temp_filepath}")
+            self.logger.debug(f"Temp directory exists: {os.path.exists(self.temp_dir)}")
+            self.logger.debug(f"Temp directory permissions: {oct(os.stat(self.temp_dir).st_mode)[-3:]}")
+            self.logger.debug(f"Content size to write: {len(content)} bytes")
+            
+            # Save the downloaded file
             with open(temp_filepath, 'wb') as f:
-                f.write(content)
+                bytes_written = f.write(content)
+                self.logger.debug(f"Bytes written to file: {bytes_written}")
                 
+            # Verify file was saved correctly
             if not os.path.exists(temp_filepath):
                 raise IOError(f"Failed to save file to {temp_filepath}")
+            
+            actual_size = os.path.getsize(temp_filepath)
+            self.logger.debug(f"Saved file size: {actual_size} bytes")
+            if actual_size != len(content):
+                raise IOError(f"File size mismatch. Expected: {len(content)}, Got: {actual_size}")
                 
             self.logger.info(f"Successfully saved file to {temp_filepath}")
             
