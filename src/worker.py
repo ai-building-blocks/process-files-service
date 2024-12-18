@@ -3,10 +3,21 @@ from dotenv import load_dotenv
 from src.models.documents import SessionLocal, Document
 from src.services.s3_service import S3Service
 
-async def process_files():
+import os
+from datetime import datetime
+from dotenv import load_dotenv
+from fastapi import FastAPI
+import uvicorn
+from src.models.documents import SessionLocal, Document
+from src.services.s3_service import S3Service
+
+app = FastAPI()
+
+async def process_files(session: SessionLocal = None):
     """Process new files once when requested"""
-    load_dotenv()
-    session = SessionLocal()
+    if session is None:
+        session = SessionLocal()
+        
     s3_service = S3Service()
     
     try:
@@ -26,104 +37,103 @@ async def process_files():
         return {"status": "success", "message": "Files processed", "details": result}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+    finally:
+        if session:
+            session.close()
 
-if __name__ == "__main__":
-    # Worker now waits for API requests instead of running continuously
-    import os
-    import uvicorn
-    from fastapi import FastAPI
+@app.post("/process")
+async def trigger_processing():
+    """Process files endpoint with proper error handling"""
+    try:
+        result = await process_files()
+        return result
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
-    app = FastAPI()
+@app.post("/files/process")
+async def process_single_file(request: dict):
+    """Process a single file by ID"""
+    session = SessionLocal()
+    s3_service = S3Service()
     
-    @app.post("/process")
-    async def trigger_processing():
-        """Process files endpoint with proper error handling"""
-        try:
-            result = await process_files()
-            return result
-        except Exception as e:
-            return {"status": "error", "message": str(e)}, 500
+    try:
+        process_id = request["process_id"]
+        identifier = request["identifier"]
+        identifier_type = request["identifier_type"]
             
-    @app.post("/files/process")
-    async def process_single_file(request: dict):
-        """Process a single file by ID"""
-        session = SessionLocal()
-        s3_service = S3Service()
+        # Get document record by ID and verify state
+        doc = session.query(Document).filter_by(id=process_id).first()
+        if not doc:
+            return {"status": "error", "message": "Invalid process ID"}
         
+        if doc.status != "queued":
+            return {"status": "error", "message": f"Invalid document state: {doc.status}. Expected: queued"}
+            
+        # Update status to downloading first
+        doc.status = "downloading"
+        session.commit()
+        
+        # After successful download, update to processing
+        doc.status = "processing"
+        doc.processing_started_at = datetime.utcnow()
+        session.commit()
+        
+        # Create a new session for this operation
+        process_session = SessionLocal()
         try:
-            process_id = request["process_id"]
-            identifier = request["identifier"]
-            identifier_type = request["identifier_type"]
-            
-            # Get document record by ID and verify state
-            doc = session.query(Document).filter_by(id=process_id).first()
+            # Re-fetch document with new session
+            doc = process_session.query(Document).filter_by(id=process_id).first()
             if not doc:
-                return {"status": "error", "message": "Invalid process ID"}
-            
-            if doc.status != "queued":
-                return {"status": "error", "message": f"Invalid document state: {doc.status}. Expected: queued"}
-                
-            # Update status to downloading first
-            doc.status = "downloading"
-            session.commit()
-            
-            # After successful download, update to processing
-            doc.status = "processing"
-            doc.processing_started_at = datetime.utcnow()
-            session.commit()
-            
-            # Create a new session for this operation
-            process_session = SessionLocal()
-            try:
-                # Re-fetch document with new session
-                doc = process_session.query(Document).filter_by(id=process_id).first()
-                if not doc:
-                    raise ValueError(f"Document not found with ID: {process_id}")
+                raise ValueError(f"Document not found with ID: {process_id}")
 
-                if identifier_type == "filename":
-                    # Strip prefix if present, then add it for S3 operations
-                    clean_filename = identifier.replace(s3_service.source_prefix, '', 1)
-                    file_path = f"{s3_service.source_prefix}{clean_filename}"
-                else:
-                    # Look up original filename from database using ID
-                    orig_doc = process_session.query(Document).filter_by(id=identifier).first()
-                    if not orig_doc:
-                        raise FileNotFoundError(f"No file found with ID {identifier}")
-                    # Add prefix for S3 operations
-                    file_path = f"{s3_service.source_prefix}{orig_doc.original_filename}"
-                
-                # Check if document already exists with full path
-                existing_doc = process_session.query(Document).filter_by(original_filename=file_path).first()
-                if existing_doc and existing_doc.id != process_id:
-                    # Update existing document instead of creating a new one
-                    doc.status = "duplicate"
-                    doc.error_message = f"Document already exists with ID: {existing_doc.id}"
-                    process_session.commit()
-                    return {"status": "error", "message": f"Document already exists with ID: {existing_doc.id}"}
-                
-                await s3_service.process_single_file(file_path, process_session)
-                
-                # Update status to uploading
-                doc.status = "uploading"
-                process_session.commit()
-                
-                # After successful upload, mark as completed
-                doc.status = "completed"
-                doc.processing_completed_at = datetime.utcnow()
-                process_session.commit()
-                
-                return {"status": "success", "message": "File processed successfully"}
-                
-            except Exception as e:
-                if doc:
-                    doc.status = "failed"
-                    doc.error_message = str(e)
-                    process_session.commit()
-                return {"status": "error", "message": str(e)}
-            finally:
-                process_session.close()
+            if identifier_type == "filename":
+                # Strip prefix if present, then add it for S3 operations
+                clean_filename = identifier.replace(s3_service.source_prefix, '', 1)
+                file_path = f"{s3_service.source_prefix}{clean_filename}"
+            else:
+                # Look up original filename from database using ID
+                orig_doc = process_session.query(Document).filter_by(id=identifier).first()
+                if not orig_doc:
+                    raise FileNotFoundError(f"No file found with ID {identifier}")
+                # Add prefix for S3 operations
+                file_path = f"{s3_service.source_prefix}{orig_doc.original_filename}"
             
-    @app.get("/health")
+            # Check if document already exists with full path
+            existing_doc = process_session.query(Document).filter_by(original_filename=file_path).first()
+            if existing_doc and existing_doc.id != process_id:
+                # Update existing document instead of creating a new one
+                doc.status = "duplicate"
+                doc.error_message = f"Document already exists with ID: {existing_doc.id}"
+                process_session.commit()
+                return {"status": "error", "message": f"Document already exists with ID: {existing_doc.id}"}
+            
+            await s3_service.process_single_file(file_path, process_session)
+            
+            # Update status to uploading
+            doc.status = "uploading"
+            process_session.commit()
+            
+            # After successful upload, mark as completed
+            doc.status = "completed"
+            doc.processing_completed_at = datetime.utcnow()
+            process_session.commit()
+            
+            return {"status": "success", "message": "File processed successfully"}
+            
+        except Exception as e:
+            if doc:
+                doc.status = "failed"
+                doc.error_message = str(e)
+                process_session.commit()
+            return {"status": "error", "message": str(e)}
+        finally:
+            process_session.close()
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        session.close()
+
+@app.get("/health")
     async def health_check():
         """Health check endpoint with debug info"""
         return {
