@@ -45,7 +45,8 @@ ENV PYTHONPATH="/app:$PYTHONPATH"
 
 # Create data directories with proper permissions
 RUN mkdir -p /app/data/temp /app/data/processed && \
-    chmod 777 /app/data/temp /app/data/processed
+    chmod -R 777 /app/data && \
+    chown -R nobody:nogroup /app/data
 
 # Define volume mount point
 VOLUME /app/data
