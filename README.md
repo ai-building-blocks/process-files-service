@@ -1,4 +1,4 @@
-# S3 Document Processor for RAG Pipelines
+# Document Processor for RAG Pipelines
 
 A specialized document processing service that prepares content for RAG (Retrieval-Augmented Generation) pipelines by converting various document formats into markdown. This service acts as the initial transformation layer, preparing documents for subsequent processing steps such as vector embedding, graph database insertion, or other LLM-oriented storage solutions.
 
