@@ -315,21 +315,37 @@ class S3Service:
             self.logger.debug(f"Temp directory permissions: {oct(os.stat(self.temp_dir).st_mode)[-3:]}")
             self.logger.debug(f"Content size to write: {len(content)} bytes")
             
+            # Use absolute paths
+            abs_temp_filepath = os.path.abspath(temp_filepath)
+            self.logger.debug(f"Using absolute path: {abs_temp_filepath}")
+            
+            # Ensure parent directory exists
+            os.makedirs(os.path.dirname(abs_temp_filepath), exist_ok=True)
+            
             # Save the downloaded file
-            with open(temp_filepath, 'wb') as f:
+            with open(abs_temp_filepath, 'wb') as f:
                 bytes_written = f.write(content)
                 self.logger.debug(f"Bytes written to file: {bytes_written}")
+                f.flush()
+                os.fsync(f.fileno())  # Force write to disk
                 
             # Verify file was saved correctly
-            if not os.path.exists(temp_filepath):
-                raise IOError(f"Failed to save file to {temp_filepath}")
+            if not os.path.exists(abs_temp_filepath):
+                raise IOError(f"Failed to save file to {abs_temp_filepath}")
             
-            actual_size = os.path.getsize(temp_filepath)
+            actual_size = os.path.getsize(abs_temp_filepath)
             self.logger.debug(f"Saved file size: {actual_size} bytes")
             if actual_size != len(content):
                 raise IOError(f"File size mismatch. Expected: {len(content)}, Got: {actual_size}")
+            
+            # Double check file persistence
+            with open(abs_temp_filepath, 'rb') as f:
+                check_content = f.read()
+                if len(check_content) != len(content):
+                    raise IOError(f"File content verification failed. Expected size: {len(content)}, Got: {len(check_content)}")
                 
-            self.logger.info(f"Successfully saved file to {temp_filepath}")
+            self.logger.info(f"Successfully saved file to {abs_temp_filepath}")
+            self.logger.debug(f"File exists after save: {os.path.exists(abs_temp_filepath)}")
             
             # Create or update document status
             doc = Document(
