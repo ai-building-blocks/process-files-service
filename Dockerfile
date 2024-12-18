@@ -43,7 +43,11 @@ COPY src/ src/
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app:$PYTHONPATH"
 
-# Create volume for data persistence
+# Create data directories with proper permissions
+RUN mkdir -p /app/data/temp /app/data/processed && \
+    chmod 777 /app/data/temp /app/data/processed
+
+# Define volume mount point
 VOLUME /app/data
 
 # Expose ports
