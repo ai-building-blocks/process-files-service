@@ -9,8 +9,20 @@ async def process_files():
     s3_service = S3Service()
     
     try:
-        await s3_service.process_new_files(session)
-        return {"status": "success", "message": "Files processed"}
+        # Validate environment
+        required_vars = ['DATA_DIR', 'TEMP_DIR', 'PROCESSED_DIR', 'DATABASE_URL']
+        missing_vars = [var for var in required_vars if not os.getenv(var)]
+        if missing_vars:
+            raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+            
+        # Ensure directories exist
+        for dir_var in ['DATA_DIR', 'TEMP_DIR', 'PROCESSED_DIR']:
+            dir_path = os.getenv(dir_var)
+            if dir_path:
+                os.makedirs(dir_path, exist_ok=True)
+                
+        result = await s3_service.process_new_files(session)
+        return {"status": "success", "message": "Files processed", "details": result}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

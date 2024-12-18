@@ -21,13 +21,21 @@ class Document(Base):
     s3_last_modified = Column(DateTime, nullable=False)
     error_message = Column(String, nullable=True)
 
-# Get data directory from environment
-data_dir = os.path.abspath(os.getenv('DATA_DIR', '/app/data'))
-os.makedirs(data_dir, exist_ok=True)
+# Get data directory from environment with validation
+data_dir = os.path.abspath(os.getenv('DATA_DIR'))
+if not data_dir:
+    raise ValueError("DATA_DIR environment variable is required")
 
-# Use absolute path for database
-db_path = os.path.join(data_dir, 'documents.db')
-database_url = os.getenv("DATABASE_URL", f"sqlite:///{db_path}")
+# Ensure data directories exist
+os.makedirs(data_dir, exist_ok=True)
+os.makedirs(os.path.join(data_dir, 'temp'), exist_ok=True)
+os.makedirs(os.path.join(data_dir, 'processed'), exist_ok=True)
+
+# Use configured database URL or construct from data dir
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    db_path = os.path.join(data_dir, 'documents.db')
+    database_url = f"sqlite:///{db_path}"
 
 print(f"Using data directory: {data_dir}")  # Debug print
 print(f"Database path: {db_path}")  # Debug print

@@ -410,7 +410,13 @@ class S3Service:
                 doc.error_message = str(e)
                 session.commit()
             raise
-        finally:
-            # Clean up temporary file
+        except Exception as e:
+            if doc:
+                doc.status = 'failed'
+                doc.error_message = str(e)
+                session.commit()
+            raise
+        else:
+            # Only clean up on success
             if os.path.exists(temp_filepath):
                 os.remove(temp_filepath)

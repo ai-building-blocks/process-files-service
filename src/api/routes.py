@@ -38,6 +38,16 @@ class TimeFilter(BaseModel):
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+# Validate environment variables on startup
+required_vars = [
+    'DATA_DIR', 'TEMP_DIR', 'PROCESSED_DIR', 'DATABASE_URL',
+    'S3_ENDPOINT', 'S3_ACCESS_KEY', 'S3_SECRET_KEY', 'SOURCE_BUCKET'
+]
+missing_vars = [var for var in required_vars if not os.getenv(var)]
+if missing_vars:
+    raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
 s3_service = S3Service()
 
 def get_db():
