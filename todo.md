@@ -30,6 +30,7 @@
 - [x] Add S3 bucket validation on startup
 - [x] Add configurable SSL verification
 - [x] Add configurable prefix paths
+- [x] Fix S3 download issues with proper region configuration
 - [ ] Add support for S3-compatible storage systems
 - [ ] Implement proper S3 credential rotation
 - [ ] Add S3 bucket lifecycle management
