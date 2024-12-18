@@ -155,6 +155,7 @@ class S3Service:
         filename = obj['Key'].replace(self.source_prefix, '', 1)
         doc = None
         if session:
+            # Always use full path (including prefix) for database queries
             doc = session.query(Document).filter_by(
                 original_filename=obj['Key']
             ).first()
@@ -162,7 +163,7 @@ class S3Service:
         status = "unprocessed"
         if doc:
             status = doc.status
-        elif os.path.exists(os.path.join(self.temp_dir, filename)):
+        elif os.path.exists(os.path.join(self.temp_dir, os.path.basename(filename))):
             status = "downloaded"
             
         return {
@@ -235,16 +236,19 @@ class S3Service:
                 self._handle_s3_client_error(e, file_id)
             raise
 
-        # Create initial document record with s3_last_modified
-        doc = Document(
-            id=str(ulid.new()),
-            original_filename=file_id,
-            processed_filename='',
-            version='1.0',
-            status='pending',
-            created_at=datetime.utcnow(),
-            s3_last_modified=last_modified.replace(tzinfo=None)  # Remove timezone for SQLite
-        )
+        # Check if document already exists with full path
+        doc = session.query(Document).filter_by(original_filename=file_id).first()
+        if not doc:
+            # Create initial document record with s3_last_modified
+            doc = Document(
+                id=str(ulid.new()),
+                original_filename=file_id,  # Store full path including prefix
+                processed_filename='',
+                version='1.0',
+                status='pending',
+                created_at=datetime.utcnow(),
+                s3_last_modified=last_modified.replace(tzinfo=None)  # Remove timezone for SQLite
+            )
         session.add(doc)
         session.commit()
         
