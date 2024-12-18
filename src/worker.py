@@ -67,13 +67,23 @@ if __name__ == "__main__":
             
             try:
                 if identifier_type == "filename":
-                    file_path = f"{s3_service.source_prefix}{identifier}"
+                    # Always use full path including prefix for consistency
+                    file_path = f"{s3_service.source_prefix}{identifier}" if not identifier.startswith(s3_service.source_prefix) else identifier
                 else:
                     # Look up original filename from database using ID
                     orig_doc = session.query(Document).filter_by(id=identifier).first()
                     if not orig_doc:
                         raise FileNotFoundError(f"No file found with ID {identifier}")
                     file_path = orig_doc.original_filename
+                
+                # Check if document already exists with full path
+                existing_doc = session.query(Document).filter_by(original_filename=file_path).first()
+                if existing_doc and existing_doc.id != process_id:
+                    # Update existing document instead of creating a new one
+                    doc.status = "duplicate"
+                    doc.error_message = f"Document already exists with ID: {existing_doc.id}"
+                    session.commit()
+                    return {"status": "error", "message": f"Document already exists with ID: {existing_doc.id}"}
                     
                 await s3_service.process_single_file(file_path, session)
                 
