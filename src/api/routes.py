@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from ..utils.logging import get_logger, log_api_error
 import httpx
 import asyncio
@@ -140,6 +140,7 @@ class ProcessFileRequest(BaseModel):
 @router.post("/files/{identifier}/process", response_model=ProcessingResponse)
 async def process_file(
     identifier: str,
+    background_tasks: BackgroundTasks,
     request: ProcessFileRequest = None,
     db: Session = Depends(get_db)
 ):
@@ -161,33 +162,41 @@ async def process_file(
             version="1.0",
             status="queued",
             created_at=datetime.utcnow(),
-            s3_last_modified=datetime.utcnow()  # Set initial last_modified time
+            s3_last_modified=datetime.utcnow()
         )
         db.add(doc)
         db.commit()
 
-        # Trigger processing in background
-        worker_url = os.getenv("WORKER_URL", "http://worker:8071")  # Match WORKER_PORT from .env
+        # Add processing to background tasks
+        s3_service = S3Service()
+        if request.identifier_type == "filename":
+            file_path = f"{s3_service.source_prefix}{identifier}"
+        else:
+            # Look up original filename from database using ID
+            orig_doc = db.query(Document).filter_by(id=identifier).first()
+            if not orig_doc:
+                raise FileNotFoundError(f"No file found with ID {identifier}")
+            file_path = orig_doc.original_filename
+
+        # Get file metadata from S3
         try:
-            async with httpx.AsyncClient() as client:
-                await client.post(
-                    f"{worker_url}/files/process",
-                    json={
-                        "process_id": process_id,
-                        "identifier": identifier,
-                        "identifier_type": request.identifier_type
-                    },
-                    timeout=30.0
-                )
-        except Exception as e:
-            logger.error(f"Failed to queue processing: {str(e)}")
-            doc.status = "failed"
-            doc.error_message = "Failed to queue processing"
-            db.commit()
-            raise HTTPException(
-                status_code=503,
-                detail="Processing service unavailable"
+            response = s3_service.s3_client.get_object(
+                Bucket=s3_service.source_bucket,
+                Key=file_path
             )
+            obj = {
+                "Key": file_path,
+                "LastModified": response['LastModified'],
+                "Content": response['Body'].read()
+            }
+        except Exception as e:
+            doc.status = "failed"
+            doc.error_message = f"Failed to get file from S3: {str(e)}"
+            db.commit()
+            raise HTTPException(status_code=404, detail=str(e))
+
+        # Add to background tasks
+        background_tasks.add_task(s3_service.process_single_file_background, obj, db)
 
         return {
             "status": "accepted",

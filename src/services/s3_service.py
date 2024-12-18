@@ -297,7 +297,7 @@ class S3Service:
         else:
             raise Exception(f"S3 error accessing file '{file_id}': {error_msg}")
     
-    async def _process_file(self, obj: Dict, session: Session) -> None:
+    def process_single_file_background(self, obj: Dict, session: Session) -> None:
         """Process a single file through the converter service"""
         content = obj.get('Content')
         if not content:
