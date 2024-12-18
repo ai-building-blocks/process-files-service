@@ -223,15 +223,19 @@ async def trigger_processing():
     try:
         # Just trigger the worker asynchronously and return immediately
         worker_url = os.getenv("WORKER_URL", "http://worker:8071")  # Match worker port
+        logger.info(f"Connecting to worker service at: {worker_url}")  # Debug log
+        
         try:
             async with httpx.AsyncClient() as client:
                 # Add longer timeout and retries
-                await client.post(
+                logger.debug(f"Sending request to worker: POST {worker_url}/process")
+                response = await client.post(
                     f"{worker_url}/process",
                     timeout=30.0,
                     headers={"Content-Type": "application/json"},
                     verify=False  # Disable SSL verification for internal communication
                 )
+                logger.debug(f"Worker response status: {response.status_code}")
         except Exception as e:
             logger.error(f"Failed to connect to worker service at {worker_url}: {str(e)}")
             raise HTTPException(
