@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from ..utils.logging import get_logger, log_api_error
 import httpx
+import asyncio
 from sqlalchemy.orm import Session
 from ..models.documents import SessionLocal, Document
 from ..services.s3_service import S3Service
@@ -222,20 +223,26 @@ async def trigger_processing():
     """Trigger the worker to process new files"""
     try:
         # Just trigger the worker asynchronously and return immediately
-        worker_url = os.getenv("WORKER_URL", "http://worker:8071")  # Match worker port
-        logger.info(f"Connecting to worker service at: {worker_url}")  # Debug log
+        worker_url = os.getenv("WORKER_URL", "http://worker:8071")
+        logger.info(f"Connecting to worker service at: {worker_url}")
         
         try:
-            async with httpx.AsyncClient() as client:
-                # Add longer timeout and retries
-                logger.debug(f"Sending request to worker: POST {worker_url}/process")
-                response = await client.post(
-                    f"{worker_url}/process",
-                    timeout=30.0,
-                    headers={"Content-Type": "application/json"},
-                    verify=False  # Disable SSL verification for internal communication
-                )
-                logger.debug(f"Worker response status: {response.status_code}")
+            async with httpx.AsyncClient(timeout=30.0, verify=False) as client:
+                # Configure client with retries
+                for attempt in range(3):
+                    try:
+                        logger.debug(f"Attempt {attempt + 1}: Sending request to worker: POST {worker_url}/process")
+                        response = await client.post(
+                            f"{worker_url}/process",
+                            headers={"Content-Type": "application/json"}
+                        )
+                        logger.debug(f"Worker response status: {response.status_code}")
+                        break
+                    except httpx.ConnectError as e:
+                        if attempt == 2:  # Last attempt
+                            raise
+                        logger.warning(f"Connection attempt {attempt + 1} failed, retrying... Error: {str(e)}")
+                        await asyncio.sleep(1)  # Wait before retry
         except Exception as e:
             logger.error(f"Failed to connect to worker service at {worker_url}: {str(e)}")
             raise HTTPException(
