@@ -164,7 +164,7 @@ async def process_file(
                     original_filename=identifier,
                     processed_filename="",
                     version="1.0",
-                    status="queued",
+                    status="queued",  # Always start with queued
                     created_at=datetime.utcnow()
                 )
                 db.add(doc)
@@ -173,8 +173,9 @@ async def process_file(
             doc = db.query(Document).filter_by(id=identifier).first()
             if not doc:
                 raise HTTPException(status_code=404, detail=f"No document found with ID {identifier}")
-            # Update existing document status
+            # Reset status to queued for reprocessing
             doc.status = "queued"
+            doc.error_message = None  # Clear any previous errors
             
         doc.s3_last_modified = datetime.utcnow()
         db.commit()

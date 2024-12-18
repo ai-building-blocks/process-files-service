@@ -485,18 +485,11 @@ class S3Service:
                 original_filename=clean_filename,  # Store without prefix
                 processed_filename='',
                 version='1.0',
-                status='pending',
+                status='queued',  # Start with queued status
                 created_at=datetime.utcnow(),
-                downloaded_at=datetime.utcnow(),  # Set downloaded_at timestamp
-                processing_started_at=datetime.utcnow(),  # Set processing_started_at timestamp
                 s3_last_modified=obj['LastModified'].replace(tzinfo=None)
             )
             session.add(doc)
-            session.commit()
-        else:
-            # Update timestamps if document already exists
-            doc.downloaded_at = datetime.utcnow()
-            doc.processing_started_at = datetime.utcnow()
             session.commit()
             
         # Create a unique filename for the temporary file

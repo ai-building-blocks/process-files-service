@@ -60,10 +60,6 @@ if __name__ == "__main__":
             if not doc:
                 return {"status": "error", "message": "Invalid process ID"}
             
-            # Verify document is in queued state
-            if doc.status != "queued":
-                return {"status": "error", "message": f"Invalid document state: {doc.status}. Expected: queued"}
-                
             # Update status to downloading first
             doc.status = "downloading"
             session.commit()
