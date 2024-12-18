@@ -371,27 +371,25 @@ class S3Service:
                 session.commit()
                 self._handle_s3_client_error(e, file_id)
             
-            try:
-                # Update status to processing before conversion
-                doc.status = 'processing'
-                doc.processing_started_at = datetime.utcnow()
-                session.commit()
-                
-                # Process the file synchronously since S3 operations are blocking
-                self._process_file(file_metadata, session, doc)
-                
-                # Update status to uploading before S3 upload
-                doc.status = 'uploading'
-                session.commit()
+            # Update status to processing before conversion
+            doc.status = 'processing'
+            doc.processing_started_at = datetime.utcnow()
+            session.commit()
             
-            try:
-                # Upload to S3
-                destination_key = f"{self.destination_prefix}{doc.processed_filename}"
-                self.s3_client.put_object(
-                    Bucket=self.source_bucket,
-                    Key=destination_key,
-                    Body=content
-                )
+            # Process the file synchronously since S3 operations are blocking
+            self._process_file(file_metadata, session, doc)
+            
+            # Update status to uploading before S3 upload
+            doc.status = 'uploading'
+            session.commit()
+            
+            # Upload to S3
+            destination_key = f"{self.destination_prefix}{doc.processed_filename}"
+            self.s3_client.put_object(
+                Bucket=self.source_bucket,
+                Key=destination_key,
+                Body=content
+            )
                 
                 # Update status to completed after successful upload
                 doc.status = 'completed'
