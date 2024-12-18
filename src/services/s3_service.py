@@ -222,14 +222,25 @@ class S3Service:
 
     async def process_single_file(self, file_id: str, session: Session) -> None:
         """Process a specific file by its ID in background"""
-        # Create initial document record
+        # Get file metadata first
+        try:
+            head_response = self.s3_client.head_object(
+                Bucket=self.source_bucket,
+                Key=file_id
+            )
+            last_modified = head_response['LastModified']
+        except ClientError as e:
+            self._handle_s3_client_error(e, file_id)
+
+        # Create initial document record with s3_last_modified
         doc = Document(
             id=str(ulid.new()),
             original_filename=file_id,
             processed_filename='',
             version='1.0',
             status='pending',
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
+            s3_last_modified=last_modified.replace(tzinfo=None)  # Remove timezone for SQLite
         )
         session.add(doc)
         session.commit()
