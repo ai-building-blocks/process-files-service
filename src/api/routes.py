@@ -163,10 +163,10 @@ async def process_file(
         # Start background processing and update initial status
         background_tasks.add_task(s3_service.process_single_file, file_path, db)
         
-        return {
-            "status": "accepted",
-            "message": f"Processing started for file (identifier: {identifier})",
-        }, 202
+        return ProcessingResponse(
+            status="accepted",
+            message=f"Processing started for file (identifier: {identifier})"
+        )
     except FileNotFoundError as e:
         log_api_error(logger, e, {
             "identifier": identifier,
