@@ -159,11 +159,13 @@ async def process_file(
                 raise FileNotFoundError(f"No file found with ID {identifier}")
             file_path = doc.original_filename
 
-        result = await s3_service.process_single_file(file_path, db)
+        # Start background processing and update initial status
+        background_tasks.add_task(s3_service.process_single_file, file_path, db)
+        
         return {
-            "status": "success", 
-            "message": f"File processed successfully (identifier: {identifier})"
-        }
+            "status": "accepted",
+            "message": f"Processing started for file (identifier: {identifier})",
+        }, 202
     except FileNotFoundError as e:
         log_api_error(logger, e, {
             "identifier": identifier,

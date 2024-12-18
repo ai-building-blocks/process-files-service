@@ -220,9 +220,25 @@ class S3Service:
                 
         return results
 
-    async def process_single_file(self, file_id: str, session: Session) -> Dict:
-        """Process a specific file by its ID"""
+    async def process_single_file(self, file_id: str, session: Session) -> None:
+        """Process a specific file by its ID in background"""
+        # Create initial document record
+        doc = Document(
+            id=str(ulid.new()),
+            original_filename=file_id,
+            processed_filename='',
+            version='1.0',
+            status='pending',
+            created_at=datetime.utcnow()
+        )
+        session.add(doc)
+        session.commit()
+        
         try:
+            # Update status to downloading
+            doc.status = 'downloading'
+            session.commit()
+            
             log_s3_operation(self.logger, "get_object", {"file_id": file_id})
             
             try:
@@ -235,6 +251,12 @@ class S3Service:
                 last_modified = response['LastModified']
                 self.logger.info(f"Successfully downloaded file {file_id}, size: {len(content)} bytes")
                 
+                # Update status after successful download
+                doc.status = 'downloaded'
+                doc.downloaded_at = datetime.utcnow()
+                doc.s3_last_modified = last_modified.replace(tzinfo=None)
+                session.commit()
+                
                 file_metadata = {
                     "Key": file_id,
                     "LastModified": last_modified,
@@ -242,24 +264,18 @@ class S3Service:
                 }
                 
             except ClientError as e:
+                doc.status = 'failed'
+                doc.error_message = str(e)
+                session.commit()
                 self._handle_s3_client_error(e, file_id)
             
-            # Check if already processed
-            doc = session.query(Document).filter_by(
-                original_filename=file_id
-            ).order_by(Document.created_at.desc()).first()
-            
-            if doc:
-                # Convert both to UTC naive for comparison
-                doc_modified = doc.s3_last_modified.replace(tzinfo=None)
-                s3_modified = file_metadata['LastModified'].replace(tzinfo=None)
-                
-                if doc_modified >= s3_modified:
-                    return {"status": "skipped", "message": "File already processed"}
+            # Update status to processing
+            doc.status = 'processing'
+            doc.processing_started_at = datetime.utcnow()
+            session.commit()
             
             # Process the file
-            await self._process_file(file_metadata, session)
-            return {"status": "success", "message": "File processed successfully"}
+            await self._process_file(file_metadata, session, doc)
             
         except Exception as e:
             self.logger.error(f"Error processing file {file_id}: {str(e)}")
@@ -297,7 +313,7 @@ class S3Service:
         else:
             raise Exception(f"S3 error accessing file '{file_id}': {error_msg}")
     
-    async def _process_file(self, obj: Dict, session: Session) -> None:
+    async def _process_file(self, obj: Dict, session: Session, doc: Document) -> None:
         """Process a single file through the converter service"""
         content = obj.get('Content')
         if not content:
@@ -347,24 +363,7 @@ class S3Service:
             self.logger.info(f"Successfully saved file to {abs_temp_filepath}")
             self.logger.debug(f"File exists after save: {os.path.exists(abs_temp_filepath)}")
             
-            # Create or update document status
-            doc = Document(
-                id=str(ulid.new()),
-                original_filename=obj['Key'],
-                processed_filename='',  # Will be set after processing
-                version='1.0',
-                status='downloaded',
-                downloaded_at=datetime.utcnow(),
-                s3_last_modified=obj['LastModified'].replace(tzinfo=None)  # Store as naive UTC
-            )
-            self.logger.info(f"Created document record for {obj['Key']}")
-            session.add(doc)
-            session.commit()
-            
-            # Update status to processing
-            doc.status = 'processing'
-            doc.processing_started_at = datetime.utcnow()
-            session.commit()
+            self.logger.info(f"Processing file {obj['Key']}")
             
             converter_url = os.getenv('CONVERTER_SERVICE_URL')
             if not converter_url:
