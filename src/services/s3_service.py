@@ -410,13 +410,8 @@ class S3Service:
                 doc.error_message = str(e)
                 session.commit()
             raise
-        except Exception as e:
-            if doc:
-                doc.status = 'failed'
-                doc.error_message = str(e)
-                session.commit()
-            raise
-        else:
-            # Only clean up on success
+        finally:
+            # Clean up temp file in all cases
             if os.path.exists(temp_filepath):
                 os.remove(temp_filepath)
+                self.logger.debug(f"Cleaned up temporary file: {temp_filepath}")
