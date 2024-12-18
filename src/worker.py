@@ -45,12 +45,16 @@ if __name__ == "__main__":
             
     @app.get("/health")
     async def health_check():
-        """Health check endpoint"""
-        return {"status": "healthy"}
+        """Health check endpoint with debug info"""
+        return {
+            "status": "healthy",
+            "worker_port": os.getenv("WORKER_PORT", 8081),
+            "host": "0.0.0.0"
+        }
     
     uvicorn.run(
         app, 
-        host=os.getenv("API_HOST", "0.0.0.0"),
+        host="0.0.0.0",  # Always bind to all interfaces in container
         port=int(os.getenv("WORKER_PORT", 8081)),
         log_level="info"
     )

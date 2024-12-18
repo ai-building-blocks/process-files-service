@@ -194,10 +194,21 @@ async def trigger_processing():
     """Trigger the worker to process new files"""
     try:
         # Just trigger the worker asynchronously and return immediately
-        async with httpx.AsyncClient() as client:
-            worker_url = os.getenv("WORKER_URL", "http://worker:8081")
-            # Fire and forget - don't wait for response
-            await client.post(f"{worker_url}/process", timeout=None)
+        worker_url = os.getenv("WORKER_URL", "http://worker:8081")
+        try:
+            async with httpx.AsyncClient() as client:
+                # Add longer timeout and retries
+                await client.post(
+                    f"{worker_url}/process",
+                    timeout=30.0,
+                    headers={"Content-Type": "application/json"}
+                )
+        except Exception as e:
+            logger.error(f"Failed to connect to worker service at {worker_url}: {str(e)}")
+            raise HTTPException(
+                status_code=503,
+                detail="Worker service unavailable. Please try again later."
+            )
             
         return {
             "status": "accepted",
