@@ -159,7 +159,8 @@ async def process_file(
             processed_filename="",
             version="1.0",
             status="queued",
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
+            s3_last_modified=datetime.utcnow()  # Set initial last_modified time
         )
         db.add(doc)
         db.commit()
