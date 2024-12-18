@@ -208,6 +208,11 @@ async def process_file(
             db.commit()
             raise HTTPException(status_code=404, detail=str(e))
 
+        # Update document status to queued before processing
+        doc.status = "queued"
+        doc.error_message = None
+        db.commit()
+            
         # Add to background tasks
         background_tasks.add_task(s3_service.process_single_file_background, obj, db)
 

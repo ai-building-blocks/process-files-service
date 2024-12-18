@@ -55,11 +55,14 @@ if __name__ == "__main__":
             identifier = request["identifier"]
             identifier_type = request["identifier_type"]
             
-            # Get document record by ID
+            # Get document record by ID and verify state
             doc = session.query(Document).filter_by(id=process_id).first()
             if not doc:
                 return {"status": "error", "message": "Invalid process ID"}
             
+            if doc.status != "queued":
+                return {"status": "error", "message": f"Invalid document state: {doc.status}. Expected: queued"}
+                
             # Update status to downloading first
             doc.status = "downloading"
             session.commit()
