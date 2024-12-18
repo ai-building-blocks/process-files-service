@@ -248,7 +248,8 @@ docker compose logs --tail=100
 1. Fork the repository
 2. Create your feature branch
 3. Run tests and linting
-4. Submit a pull request
+4. Document and update following https://github.com/greatunlearning
+5. Submit a pull request
 
 ## License
 
