@@ -193,19 +193,15 @@ async def process_file(
 async def trigger_processing():
     """Trigger the worker to process new files"""
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # Just trigger the worker asynchronously and return immediately
+        async with httpx.AsyncClient() as client:
             worker_url = os.getenv("WORKER_URL", "http://worker:8081")
-            response = await client.post(f"{worker_url}/process")
-            if response.status_code == 200:
-                return response.json()
-            else:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Worker error: {response.text}"
-                )
-    except httpx.TimeoutException:
-        raise HTTPException(504, "Worker processing timed out")
-    except httpx.RequestError as e:
-        raise HTTPException(502, f"Error connecting to worker: {str(e)}")
+            # Fire and forget - don't wait for response
+            await client.post(f"{worker_url}/process", timeout=None)
+            
+        return {
+            "status": "accepted",
+            "message": "Processing triggered successfully"
+        }
     except Exception as e:
         raise HTTPException(500, f"Error triggering processing: {str(e)}")
