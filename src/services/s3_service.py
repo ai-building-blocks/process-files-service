@@ -327,12 +327,27 @@ class S3Service:
         else:
             raise Exception(f"S3 error accessing file '{file_id}': {error_msg}")
     
-    def _process_file(self, obj: Dict, session: Session, doc: Document) -> None:
+    def process_single_file_background(self, obj: Dict, session: Session) -> None:
         """Process a single file through the converter service"""
         content = obj.get('Content')
         if not content:
             self.logger.error(f"No content provided for file {obj['Key']}")
             raise ValueError("File content not provided")
+
+        # Create or get document record
+        doc = session.query(Document).filter_by(original_filename=obj['Key']).first()
+        if not doc:
+            doc = Document(
+                id=str(ulid.new()),
+                original_filename=obj['Key'],
+                processed_filename='',
+                version='1.0',
+                status='pending',
+                created_at=datetime.utcnow(),
+                s3_last_modified=obj['LastModified'].replace(tzinfo=None)
+            )
+            session.add(doc)
+            session.commit()
             
         # Create a unique filename for the temporary file
         temp_filename = os.path.basename(obj['Key'])
@@ -379,6 +394,11 @@ class S3Service:
             
             self.logger.info(f"Processing file {obj['Key']}")
             
+            # Get document record by original filename
+            doc = session.query(Document).filter_by(original_filename=obj.get('Key')).first()
+            if not doc:
+                raise ValueError(f"No document record found for file {obj.get('Key')}")
+
             converter_url = os.getenv('CONVERTER_SERVICE_URL')
             if not converter_url:
                 raise ValueError("CONVERTER_SERVICE_URL environment variable is required")
@@ -403,19 +423,28 @@ class S3Service:
             with open(processed_filepath, 'w') as f:
                 f.write(content)
             
-            # Save to destination folder
-            destination_key = f"{self.destination_prefix}{processed_filename}"
-            self.s3_client.put_object(
-                Bucket=self.source_bucket,
-                Key=destination_key,
-                Body=content
-            )
-            
-            # Update document status
-            doc.processed_filename = processed_filename
-            doc.status = 'completed'
-            doc.processing_completed_at = datetime.utcnow()
-            session.commit()
+            # Try to save to destination folder
+            try:
+                destination_key = f"{self.destination_prefix}{processed_filename}"
+                self.s3_client.put_object(
+                    Bucket=self.source_bucket,
+                    Key=destination_key,
+                    Body=content
+                )
+                
+                # Update document status on successful upload
+                doc.processed_filename = processed_filename
+                doc.status = 'completed'
+                doc.processing_completed_at = datetime.utcnow()
+                session.commit()
+                
+            except Exception as upload_error:
+                self.logger.error(f"Failed to upload processed file to S3: {str(upload_error)}")
+                doc.status = 'upload_failed'
+                doc.error_message = f"Failed to upload to S3: {str(upload_error)}"
+                doc.processing_completed_at = datetime.utcnow()
+                session.commit()
+                raise  # Re-raise to trigger outer exception handling
             
         except Exception as e:
             if doc:
