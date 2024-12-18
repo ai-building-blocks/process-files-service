@@ -9,6 +9,8 @@
 - [ ] Add LICENSE file (suggest MIT)
 - [x] Update README with correct GitHub repository links
 - [ ] Add pre-commit hooks for code formatting
+- [ ] Add CONTRIBUTING.md with development guidelines
+- [ ] Add SECURITY.md with security policy
 
 ## CI/CD
 - [x] Create development and production Docker Compose files
@@ -36,14 +38,17 @@
 ## Document Processing
 - [x] Basic file processing setup
 - [x] Integration with external conversion service
-- [ ] Implement robust error handling:
-  - [ ] Handle conversion service failures
-  - [ ] Implement retry mechanism
+- [x] Implement robust error handling:
+  - [x] Handle conversion service failures
+  - [x] Implement retry mechanism
   - [ ] Add dead letter queue for failed conversions
 - [ ] Add support for batch processing
-- [ ] Implement file validation
+- [x] Implement file validation
 - [ ] Add support for different document types
-- [ ] Implement proper temp file cleanup
+- [x] Implement proper temp file cleanup
+- [ ] Add file content validation
+- [ ] Implement file size limits
+- [ ] Add support for file compression
 
 ## State Management
 - [x] Basic SQLite integration
@@ -97,9 +102,12 @@
   - [x] Add structured logging
   - [ ] Add log rotation
   - [ ] Add log aggregation
-  - [ ] Add error context enrichment
+  - [x] Add error context enrichment
   - [ ] Add performance logging
   - [ ] Add audit logging for sensitive operations
+- [ ] Add Prometheus metrics
+- [ ] Implement OpenTelemetry tracing
+- [ ] Add Grafana dashboards
 - [ ] Add metrics collection:
   - [ ] Processing times
   - [ ] Success/failure rates
