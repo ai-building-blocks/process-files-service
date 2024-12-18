@@ -1,11 +1,19 @@
 import logging
+import os
 import sys
 from datetime import datetime
 from typing import Any, Dict
 
+# Get log level from environment
+log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+valid_levels = {'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'}
+if log_level not in valid_levels:
+    print(f"Warning: Invalid LOG_LEVEL '{log_level}'. Defaulting to INFO")
+    log_level = 'INFO'
+
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Changed to DEBUG level
+    level=getattr(logging, log_level),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
