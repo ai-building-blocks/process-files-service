@@ -107,6 +107,6 @@ if __name__ == "__main__":
     uvicorn.run(
         app, 
         host="0.0.0.0",  # Always bind to all interfaces in container
-        port=int(os.getenv("WORKER_PORT", 8081)),
+        port=int(os.getenv("WORKER_PORT", 8071)),  # Default to match .env.template
         log_level="info"
     )

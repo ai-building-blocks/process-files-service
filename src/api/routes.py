@@ -166,7 +166,7 @@ async def process_file(
         db.commit()
 
         # Trigger processing in background
-        worker_url = os.getenv("WORKER_URL", "http://worker:8081")
+        worker_url = os.getenv("WORKER_URL", "http://worker:8071")  # Match WORKER_PORT from .env
         try:
             async with httpx.AsyncClient() as client:
                 await client.post(
