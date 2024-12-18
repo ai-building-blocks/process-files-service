@@ -13,7 +13,7 @@ class Document(Base):
     original_filename = Column(String, nullable=False)
     processed_filename = Column(String, nullable=False)
     version = Column(String, nullable=False)
-    status = Column(String, nullable=False, default='queued')  # queued, downloading, processing, completed, failed
+    status = Column(String, nullable=False, default='queued')  # queued, downloading, processing, uploading, completed, failed
     created_at = Column(DateTime, default=datetime.utcnow)
     downloaded_at = Column(DateTime, nullable=True)
     processing_started_at = Column(DateTime, nullable=True)

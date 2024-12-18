@@ -97,11 +97,11 @@ if __name__ == "__main__":
                     
                 await s3_service.process_single_file(file_path, session)
                 
-                # Update status to uploaded first
-                doc.status = "uploaded"
+                # Update status to uploading
+                doc.status = "uploading"
                 session.commit()
                 
-                # Then mark as completed
+                # After successful upload, mark as completed
                 doc.status = "completed"
                 doc.processing_completed_at = datetime.utcnow()
                 session.commit()

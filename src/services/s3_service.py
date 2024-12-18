@@ -374,10 +374,28 @@ class S3Service:
             # Process the file synchronously since S3 operations are blocking
             self._process_file(file_metadata, session, doc)
             
-            # Update status to completed after successful processing
-            doc.status = 'completed'
-            doc.processing_completed_at = datetime.utcnow()
+            # Update status to uploading before S3 upload
+            doc.status = 'uploading'
             session.commit()
+            
+            try:
+                # Upload to S3
+                destination_key = f"{self.destination_prefix}{doc.processed_filename}"
+                self.s3_client.put_object(
+                    Bucket=self.source_bucket,
+                    Key=destination_key,
+                    Body=content
+                )
+                
+                # Update status to completed after successful upload
+                doc.status = 'completed'
+                doc.processing_completed_at = datetime.utcnow()
+                session.commit()
+            except Exception as upload_error:
+                doc.status = 'failed'
+                doc.error_message = f"Upload failed: {str(upload_error)}"
+                session.commit()
+                raise
             
         except Exception as e:
             self.logger.error(f"Error processing file {file_id}: {str(e)}")
