@@ -585,7 +585,9 @@ class S3Service:
                 session.commit()
             raise
         finally:
-            # Clean up temp file in all cases
-            if os.path.exists(temp_filepath):
+            # Only clean up temp file after successful processing
+            if doc.status == 'completed' and os.path.exists(temp_filepath):
                 os.remove(temp_filepath)
                 self.logger.debug(f"Cleaned up temporary file: {temp_filepath}")
+            elif os.path.exists(temp_filepath):
+                self.logger.debug(f"Keeping temporary file for failed/incomplete processing: {temp_filepath}")
