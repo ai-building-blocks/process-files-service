@@ -526,10 +526,11 @@ class S3Service:
             
             self.logger.info(f"Processing file {obj['Key']}")
             
-            # Get document record by original filename
-            doc = session.query(Document).filter_by(original_filename=obj.get('Key')).first()
+            # Get document record by original filename (without prefix)
+            clean_filename = obj.get('Key').replace(self.source_prefix, '', 1)
+            doc = session.query(Document).filter_by(original_filename=clean_filename).first()
             if not doc:
-                raise ValueError(f"No document record found for file {obj.get('Key')}")
+                raise ValueError(f"No document record found for file {clean_filename}")
 
             converter_url = os.getenv('CONVERTER_SERVICE_URL')
             if not converter_url:
