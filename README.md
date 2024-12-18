@@ -1,16 +1,21 @@
-# S3 Document Processor
+# S3 Document Processor for RAG Pipelines
 
-Automatically processes documents from S3/MinIO buckets and converts them to markdown format. This service provides a robust API for managing document processing with real-time status tracking.
+A specialized document processing service that prepares content for RAG (Retrieval-Augmented Generation) pipelines by converting various document formats into markdown. This service acts as the initial transformation layer, preparing documents for subsequent processing steps such as vector embedding, graph database insertion, or other LLM-oriented storage solutions.
+
+Following The Great Unlearning principles, this service embraces AI-first development patterns with self-contained modules, clear natural language documentation, and context-first design. The implementation prioritizes clarity and maintainability in an AI-assisted development workflow.
 
 ## Features
 
-- 🚀 Automatic document processing from S3/MinIO
-- 📝 Markdown conversion with status tracking
-- 🔄 Real-time processing status updates
+- 🚀 Automated document processing from S3/MinIO sources
+- 📝 Intelligent markdown conversion optimized for RAG pipelines
+- 🔄 Real-time processing status tracking
 - 🌐 RESTful API with OpenAPI documentation
 - 🐳 Docker support with multi-container setup
-- 📊 File listing and status monitoring
-- ⚡ Async processing for better performance
+- 📊 Comprehensive file monitoring and status reporting
+- ⚡ Asynchronous processing for high throughput
+- 🔗 Designed for integration with downstream RAG components
+- 🧠 AI-first architecture following The Great Unlearning principles
+
 
 ## Quick Start with Docker
 
@@ -230,6 +235,12 @@ python -m src.worker
    - Verify ports are not in use
    - Check API_PORT in .env
 
+4. **Pipeline Integration Issues**
+   - Verify output format matches downstream requirements
+   - Check file permissions in destination bucket
+   - Monitor processing queue status
+   - Validate markdown output structure
+
 ### Logs
 ```bash
 # View all logs
@@ -248,8 +259,69 @@ docker compose logs --tail=100
 1. Fork the repository
 2. Create your feature branch
 3. Run tests and linting
-4. Document and update following https://github.com/greatunlearning
+4. Document and update following [the great unlearning principles](https://github.com/greatunlearning)
 5. Submit a pull request
+
+## The Great Unlearning Implementation
+
+This project follows The Great Unlearning principles for AI-first development:
+
+### Prompt-Oriented Architecture (POA)
+The project structure is organized to facilitate AI interaction:
+```
+s3-document-processor/
+├── intent.md             # Service purpose and business context
+├── implementation/       # Core implementation
+│   ├── api/             # API components
+│   ├── worker/          # Processing worker
+│   └── converter/       # Document conversion logic
+├── tests/               # Self-contained test suites
+├── prompts/             # Common modification scenarios
+│   ├── api-changes.md
+│   ├── converter-updates.md
+│   └── pipeline-integration.md
+└── docs/                # LLM-friendly documentation
+```
+
+### Context Window Optimization (CWO)
+Each component is designed to fit within typical LLM context windows:
+- API endpoints are self-contained
+- Worker logic is modular
+- Converter implementations are focused
+- Documentation is structured in digestible sections
+
+### Self-Regenerating Modules (SRM)
+Components are designed for AI modification:
+- Clear business rules in natural language
+- Explicit dependencies
+- Self-contained validation
+- Minimal external coupling
+
+### LLM-Friendly Documentation Pattern (LFDP)
+Documentation serves both human and AI readers:
+- Natural language descriptions
+- Implementation examples
+- Common modification scenarios
+- Integration patterns
+- Test cases
+
+### Context-First Design (CFD)
+Each module contains complete context:
+- Business requirements
+- Technical constraints
+- Integration points
+- Validation rules
+
+### Prompt-Driven Testing (PDT)
+Tests are designed for AI maintenance:
+- Natural language scenarios
+- Complete context
+- Clear boundaries
+- Generatable test cases
+
+The project structure and documentation follow these patterns to ensure effective collaboration between human developers and AI assistants. This approach facilitates easier maintenance, updates, and extensions of the service while maintaining high code quality and system reliability.
+
+For more information about The Great Unlearning principles and their implementation in this project, see [`the great unlearning repo`](https://github.com/greatunlearning).
 
 ## License
 
@@ -259,3 +331,5 @@ MIT
 
 - GitHub Issues: [Report a bug](https://github.com/ai-building-blocks/process-files-service/issues)
 - Documentation: See `/docs` endpoint when running
+- Integration Support: See architecture documentation in `/docs/architecture.md`
+- Pipeline Configuration: Review `/docs/pipeline-setup.md` for RAG integration details
