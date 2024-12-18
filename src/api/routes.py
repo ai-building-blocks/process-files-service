@@ -161,7 +161,8 @@ async def process_file(
             file_path = doc.original_filename
 
         # Start background processing and update initial status
-        background_tasks.add_task(s3_service.process_single_file, file_path, db)
+        # Run synchronously since S3 operations are blocking
+        s3_service.process_single_file(file_path, db)
         
         return ProcessingResponse(
             status="accepted",

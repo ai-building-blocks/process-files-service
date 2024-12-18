@@ -220,17 +220,20 @@ class S3Service:
                 
         return results
 
-    async def process_single_file(self, file_id: str, session: Session) -> None:
+    def process_single_file(self, file_id: str, session: Session) -> None:
         """Process a specific file by its ID in background"""
-        # Get file metadata first
         try:
+            # Get file metadata first
             head_response = self.s3_client.head_object(
                 Bucket=self.source_bucket,
                 Key=file_id
             )
             last_modified = head_response['LastModified']
         except ClientError as e:
-            self._handle_s3_client_error(e, file_id)
+            error_code = e.response['Error']['Code']
+            if error_code in ['403', '404']:
+                self._handle_s3_client_error(e, file_id)
+            raise
 
         # Create initial document record with s3_last_modified
         doc = Document(
@@ -285,8 +288,8 @@ class S3Service:
             doc.processing_started_at = datetime.utcnow()
             session.commit()
             
-            # Process the file
-            await self._process_file(file_metadata, session, doc)
+            # Process the file synchronously since S3 operations are blocking
+            self._process_file(file_metadata, session, doc)
             
         except Exception as e:
             self.logger.error(f"Error processing file {file_id}: {str(e)}")
@@ -324,7 +327,7 @@ class S3Service:
         else:
             raise Exception(f"S3 error accessing file '{file_id}': {error_msg}")
     
-    async def _process_file(self, obj: Dict, session: Session, doc: Document) -> None:
+    def _process_file(self, obj: Dict, session: Session, doc: Document) -> None:
         """Process a single file through the converter service"""
         content = obj.get('Content')
         if not content:
