@@ -339,14 +339,21 @@ class S3Service:
         if not doc:
             doc = Document(
                 id=str(ulid.new()),
-                original_filename=obj['Key'],
+                original_filename=obj['Key'],  # Store full path including prefix
                 processed_filename='',
                 version='1.0',
                 status='pending',
                 created_at=datetime.utcnow(),
+                downloaded_at=datetime.utcnow(),  # Set downloaded_at timestamp
+                processing_started_at=datetime.utcnow(),  # Set processing_started_at timestamp
                 s3_last_modified=obj['LastModified'].replace(tzinfo=None)
             )
             session.add(doc)
+            session.commit()
+        else:
+            # Update timestamps if document already exists
+            doc.downloaded_at = datetime.utcnow()
+            doc.processing_started_at = datetime.utcnow()
             session.commit()
             
         # Create a unique filename for the temporary file
@@ -417,9 +424,9 @@ class S3Service:
                 
             content = response.json()['markdown_content']
             
-            # Save locally in processed directory
+            # Save locally in processed directory - use just the filename without prefix
             processed_filename = f'{doc.id}.md'
-            processed_filepath = os.path.join(self.processed_dir, processed_filename)
+            processed_filepath = os.path.join(self.processed_dir, os.path.basename(processed_filename))
             with open(processed_filepath, 'w') as f:
                 f.write(content)
             
