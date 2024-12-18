@@ -38,7 +38,11 @@ if not database_url:
     database_url = f"sqlite:///{db_path}"
 
 print(f"Using data directory: {data_dir}")  # Debug print
-print(f"Database path: {db_path}")  # Debug print
+
+# Construct database path if not provided via URL
+db_path = os.path.join(data_dir, 'documents.db') if not database_url else None
+if db_path:
+    print(f"Database path: {db_path}")  # Debug print
 
 print(f"Initializing database at: {database_url}")  # Temporary debug print
 
