@@ -323,6 +323,157 @@ The project structure and documentation follow these patterns to ensure effectiv
 
 For more information about The Great Unlearning principles and their implementation in this project, see [`the great unlearning repo`](https://github.com/greatunlearning).
 
+## Testing
+
+### Running the Test Script
+
+The repository includes a shell script for testing file processing:
+
+```bash
+# Make the script executable
+chmod +x process_file.sh
+
+# Process a specific file
+./process_file.sh your_file.pdf
+```
+
+The script will:
+1. Submit the file for processing
+2. Monitor the processing status
+3. Show progress updates
+4. Exit with success (0) or failure (1)
+
+Example output:
+```
+Triggering processing for file: test.pdf
+Process ID: 01HKG2J5NXMY8ZRQW3B6MVRW4N
+Status: downloading
+Still processing...
+Status: processing
+Still processing...
+Status: completed
+Processing completed successfully
+```
+
+### Manual Testing
+
+You can also test the API endpoints directly:
+
+1. **Submit a file for processing**
+```bash
+curl -X POST "http://localhost:8070/api/files/test.pdf/process" \
+     -H "Content-Type: application/json" \
+     -d '{"identifier_type": "filename"}'
+```
+
+2. **Check processing status**
+```bash
+curl "http://localhost:8070/api/files/{process_id}/status"
+```
+
+3. **List all files**
+```bash
+curl "http://localhost:8070/api/files?source=bucket"
+```
+
+4. **View processing status for all files**
+```bash
+curl "http://localhost:8070/api/status"
+```
+
+### Common Test Cases
+
+1. **Happy Path**
+   - Upload supported file types
+   - Process files of varying sizes
+   - Check successful conversion
+
+2. **Error Handling**
+   - Submit unsupported file types
+   - Test with missing files
+   - Check timeout behavior
+   - Verify error messages
+
+3. **Edge Cases**
+   - Very large files
+   - Files with special characters
+   - Concurrent processing requests
+   - Network interruptions
+
+### Automated Testing
+
+For automated testing, use pytest:
+
+```bash
+# Install test dependencies
+uv pip install pytest pytest-asyncio pytest-cov
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src
+
+# Run specific test file
+pytest tests/test_api.py
+```
+
+### Performance Testing
+
+Monitor system performance during processing:
+
+1. **Resource Usage**
+```bash
+# Watch Docker container stats
+docker stats
+
+# Monitor specific container
+docker stats api worker
+```
+
+2. **Processing Times**
+```bash
+# Time the processing script
+time ./process_file.sh test.pdf
+```
+
+3. **Concurrent Load**
+```bash
+# Process multiple files simultaneously
+for file in *.pdf; do
+    ./process_file.sh "$file" &
+done
+wait
+```
+
+### Troubleshooting Tests
+
+If tests fail:
+
+1. Check logs:
+```bash
+docker compose logs api
+docker compose logs worker
+```
+
+2. Verify services:
+```bash
+docker compose ps
+curl http://localhost:8070/health
+```
+
+3. Check file permissions:
+```bash
+ls -l data/temp/
+ls -l data/processed/
+```
+
+4. Validate S3 access:
+```bash
+mc ls myminio/source-docs
+mc ls myminio/processed-docs
+```
+
 ## License
 
 MIT

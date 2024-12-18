@@ -7,8 +7,8 @@ if [ -z "$1" ]; then
 fi
 
 FILENAME="$1"
-API_HOST=${API_HOST:-"localhost"}
-API_PORT=${API_PORT:-"8070"}
+API_HOST="localhost"
+API_PORT="8070"
 BASE_URL="http://${API_HOST}:${API_PORT}"
 
 # Trigger processing and get process ID
