@@ -123,7 +123,23 @@ class S3Service:
         return f"{prefix}/"
         
     async def list_files(self, session: Optional[Session] = None, since: Optional[str] = None) -> List[Dict]:
-        """List files from source bucket with accurate processing status"""
+        """List files from source bucket with accurate processing status
+        
+        Args:
+            session: Optional SQLAlchemy session for database queries
+            since: Optional ULID or ISO timestamp to filter files modified after this time
+            
+        Returns:
+            List[Dict]: List of file information dictionaries containing:
+                - id: ULID identifier
+                - filename: Original filename
+                - status: Current processing status
+                - last_modified: ISO format timestamp
+                
+        Raises:
+            ClientError: If S3 operations fail
+            ValueError: If since parameter is invalid
+        """
         try:
             response = self.s3_client.list_objects_v2(
                 Bucket=self.source_bucket,
@@ -144,14 +160,36 @@ class S3Service:
             raise
 
     def _parse_timestamp(self, timestamp: str) -> float:
-        """Parse timestamp from ULID or ISO format"""
+        """Parse timestamp from ULID or ISO format
+        
+        Args:
+            timestamp: String containing either ULID or ISO format timestamp
+            
+        Returns:
+            float: Unix timestamp
+            
+        Raises:
+            ValueError: If timestamp format is invalid
+        """
         try:
             return ulid.parse(timestamp).timestamp()
         except ValueError:
             return datetime.fromisoformat(timestamp.replace('Z', '+00:00')).timestamp()
 
     def _create_file_info(self, obj: Dict, session: Optional[Session]) -> Dict:
-        """Create file info dictionary from S3 object"""
+        """Create file info dictionary from S3 object
+        
+        Args:
+            obj: S3 object dictionary containing Key and LastModified
+            session: Optional SQLAlchemy session for database queries
+            
+        Returns:
+            Dict containing:
+                - id: ULID identifier
+                - filename: Original filename without prefix
+                - status: Current processing status
+                - last_modified: ISO format timestamp
+        """
         filename = obj['Key'].replace(self.source_prefix, '', 1)
         doc = None
         if session:
@@ -174,7 +212,19 @@ class S3Service:
         }
 
     async def get_files_status(self, session: Session) -> Dict[str, str]:
-        """Get processing status for all files in the system"""
+        """Get processing status for all files in the system
+        
+        Args:
+            session: SQLAlchemy session for database queries
+            
+        Returns:
+            Dict[str, str]: Mapping of filenames to their current status:
+                - "processed": File has been processed
+                - "unprocessed": File exists in S3 but not processed
+                
+        Raises:
+            ClientError: If S3 operations fail
+        """
         try:
             # Get all documents from database
             docs = {doc.original_filename: "processed" 
@@ -197,7 +247,20 @@ class S3Service:
             raise
 
     async def process_new_files(self, session: Session) -> List[Dict]:
-        """Process all new files in the source bucket"""
+        """Process all new files in the source bucket
+        
+        Args:
+            session: SQLAlchemy session for database operations
+            
+        Returns:
+            List[Dict]: List of processing results containing:
+                - file: Filename
+                - status: Processing status ("success" or "error")
+                - message: Success message or error details
+                
+        Raises:
+            ClientError: If S3 operations fail
+        """
         results = []
         objects = self.s3_client.list_objects_v2(
             Bucket=self.source_bucket,
@@ -222,7 +285,24 @@ class S3Service:
         return results
 
     def process_single_file(self, file_id: str, session: Session) -> None:
-        """Process a specific file by its ID in background"""
+        """Process a specific file by its ID in background
+        
+        Args:
+            file_id: Full path (including prefix) of file to process
+            session: SQLAlchemy session for database operations
+            
+        Raises:
+            FileNotFoundError: If file doesn't exist in S3
+            PermissionError: If S3 access is denied
+            ClientError: For other S3 operation failures
+            ValueError: If file_id is invalid
+            
+        Side Effects:
+            - Creates/updates document record in database
+            - Downloads file to temp directory
+            - Processes file through conversion service
+            - Updates document status throughout processing
+        """
         try:
             # Get file metadata first
             head_response = self.s3_client.head_object(
@@ -300,7 +380,21 @@ class S3Service:
             raise
 
     def _handle_s3_client_error(self, error: ClientError, file_id: str) -> None:
-        """Handle S3 client errors with appropriate logging and exceptions"""
+        """Handle S3 client errors with appropriate logging and exceptions
+        
+        Args:
+            error: boto3 ClientError exception
+            file_id: File identifier that caused the error
+            
+        Raises:
+            FileNotFoundError: For 404 errors
+            PermissionError: For 403 errors
+            Exception: For other S3 errors
+            
+        Side Effects:
+            - Logs error details and context
+            - Enriches error messages with troubleshooting info
+        """
         error_code = error.response['Error']['Code']
         error_msg = error.response['Error']['Message']
         context = {
@@ -332,7 +426,27 @@ class S3Service:
             raise Exception(f"S3 error accessing file '{file_id}': {error_msg}")
     
     def process_single_file_background(self, obj: Dict, session: Session) -> None:
-        """Process a single file through the converter service"""
+        """Process a single file through the converter service
+        
+        Args:
+            obj: Dictionary containing:
+                - Key: Full S3 path
+                - LastModified: S3 last modified timestamp
+                - Content: Raw file content bytes
+            session: SQLAlchemy session for database operations
+            
+        Raises:
+            ValueError: If file content is missing or invalid
+            IOError: If file operations fail
+            ClientError: If S3 operations fail
+            
+        Side Effects:
+            - Creates/updates document record
+            - Saves file to temp directory
+            - Processes through conversion service
+            - Updates document status
+            - Cleans up temp files
+        """
         content = obj.get('Content')
         if not content:
             self.logger.error(f"No content provided for file {obj['Key']}")
